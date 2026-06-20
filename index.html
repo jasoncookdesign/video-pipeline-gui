@@ -22,14 +22,20 @@
           <span id="mode-badge" class="topbar__mode" title="IPC adapter in use">mock</span>
         </div>
         <div class="topbar__right">
-          <label class="topbar__cap">
-            <span id="cap-help">cap</span>
-            <input id="cap-input" type="number" min="1" max="16" step="1" value="2" />
+          <label class="topbar__cap" title="Maximum tasks run at once within a level">
+            <span id="cap-help">Parallel</span>
+            <select id="cap-input">
+              <option value="1">1 task</option>
+              <option value="2" selected>2 tasks</option>
+              <option value="3">3 tasks</option>
+              <option value="4">4 tasks</option>
+            </select>
           </label>
           <span id="run-progress" class="topbar__progress"></span>
           <button id="run-btn" type="button" class="btn btn--run">▶ Run</button>
           <button id="cancel-btn" type="button" class="btn btn--cancel">■ Cancel</button>
-          <button id="theme-toggle" type="button" class="btn btn--ghost">◑ Dark</button>
+          <button id="theme-toggle" type="button" class="btn btn--ghost btn--icon"
+                  title="Toggle light / dark" aria-label="Toggle theme"></button>
         </div>
       </header>
 
