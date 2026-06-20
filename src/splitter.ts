@@ -3,13 +3,13 @@
 // for a panel that sits AFTER the handle (to its right for a vertical handle,
 // below it for a horizontal one). Resizing is clamped to [min, max]. Dragging the
 // panel below `collapseAt` collapses it; dragging a collapsed panel back out past
-// the threshold re-expands it mid-drag (no need to release). The actual layout
-// write is delegated via `apply` so callers stay in control of the CSS.
+// the threshold re-expands it mid-drag (no need to release). On every change it
+// reports (sizePx, collapsed) via `onChange` — the caller applies the layout and
+// persists it. `initialSize`/`initialCollapsed` restore a saved arrangement.
 
 export interface SplitController {
   setCollapsed(collapsed: boolean): void;
   toggle(): void;
-  collapsed(): boolean;
 }
 
 export interface SplitterOptions {
@@ -19,27 +19,24 @@ export interface SplitterOptions {
   max: number;
   /** Collapse when a drag would shrink the panel below this many px. */
   collapseAt: number;
-  /** Initial expanded size in px. */
-  initial: number;
-  /** Apply the panel size in px to the layout (0 ⇒ collapsed). */
-  apply: (sizePx: number) => void;
-  /** Notified whenever the collapsed state flips (for class toggles / icons). */
-  onCollapsedChange?: (collapsed: boolean) => void;
+  /** Expanded size in px to start from (restored from saved state). */
+  initialSize: number;
+  /** Whether the panel starts collapsed (restored from saved state). */
+  initialCollapsed?: boolean;
+  /** Called on init and on every change; `size` is the last expanded size. */
+  onChange: (sizePx: number, collapsed: boolean) => void;
 }
 
 export function makeSplitter(o: SplitterOptions): SplitController {
-  let size = o.initial;
-  let collapsed = false;
+  let size = o.initialSize;
+  let collapsed = o.initialCollapsed ?? false;
 
-  const applyState = (): void => {
-    o.apply(collapsed ? 0 : size);
-    o.onCollapsedChange?.(collapsed);
-  };
+  const emit = (): void => o.onChange(size, collapsed);
 
   const setCollapsed = (c: boolean): void => {
     if (collapsed === c) return;
     collapsed = c;
-    applyState();
+    emit();
   };
 
   let dragging = false;
@@ -55,12 +52,12 @@ export function makeSplitter(o: SplitterOptions): SplitController {
     const next = startSize - (coordOf(e) - startCoord);
     if (next < o.collapseAt) {
       collapsed = true;
-      applyState();
+      emit();
       return;
     }
     collapsed = false;
     size = Math.max(o.min, Math.min(o.max, next));
-    applyState();
+    emit();
   };
 
   const onUp = (e: PointerEvent): void => {
@@ -93,6 +90,6 @@ export function makeSplitter(o: SplitterOptions): SplitController {
     e.preventDefault();
   });
 
-  applyState();
-  return { setCollapsed, toggle: () => setCollapsed(!collapsed), collapsed: () => collapsed };
+  emit(); // apply the initial / restored arrangement
+  return { setCollapsed, toggle: () => setCollapsed(!collapsed) };
 }

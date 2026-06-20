@@ -14,6 +14,25 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+// Persisted panel arrangement (resize sizes + collapsed flags). camelCase to
+// match the frontend PanelLayout; every field optional so older stores load.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PanelLayout {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub right_width: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub right_collapsed: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub help_height: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub help_collapsed: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub log_height: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub log_collapsed: Option<bool>,
+}
+
 // Session fields serialize camelCase (formValues / previewLayer) to match the
 // frontend's SessionState. read_state/write_state round-trip raw serde, so the
 // casing must agree with the TypeScript contract.
@@ -27,6 +46,8 @@ pub struct Session {
     pub preview_layer: Option<String>,
     #[serde(default = "default_theme")]
     pub theme: String,
+    #[serde(default)]
+    pub panels: PanelLayout,
 }
 
 fn default_theme() -> String {
