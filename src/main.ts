@@ -91,6 +91,27 @@ async function boot(): Promise<void> {
   const refreshCommand = () => void cmdPreview.update(selectedTask);
   const refreshPlan = () => void planPanel.refresh([...enabled]);
 
+  // QoL: the earliest Identity control (project.init's) is the "project identity".
+  // Choosing it pre-selects the same value on the later Identity controls so the
+  // user doesn't re-pick it per step. The controls stay independent — editing a
+  // downstream one doesn't propagate back, and these are still separate CLI args.
+  const identityTaskIds = schema.tasks
+    .filter((t) => t.params.some((p) => p.key === "identity"))
+    .map((t) => t.id);
+  const projectIdentityKey =
+    identityTaskIds.length > 0 ? `${identityTaskIds[0]}.identity` : null;
+  const downstreamIdentityKeys = identityTaskIds
+    .slice(1)
+    .map((id) => `${id}.identity`);
+
+  const onFormChange = (changedKey?: string): void => {
+    if (changedKey && changedKey === projectIdentityKey) {
+      const val = store.getFormValue(changedKey);
+      for (const k of downstreamIdentityKeys) store.setFormValue(k, val);
+    }
+    refreshCommand();
+  };
+
   // ---- left tree: steps -> tasks with enable toggles ----
   const tree = $("#step-tree");
 
@@ -105,7 +126,7 @@ async function boot(): Promise<void> {
       ?.classList.add("tree__task--active");
 
     renderForm($("#form-host"), task, {
-      onChange: refreshCommand,
+      onChange: onFormChange,
       help,
     });
     refreshCommand();
