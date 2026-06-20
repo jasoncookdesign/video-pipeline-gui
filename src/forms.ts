@@ -14,8 +14,9 @@ import type { HelpPanel } from "./help";
 export type { HelpPanel };
 
 export interface FormHooks {
-  /** Called on any value change (debounced upstream) so previews re-resolve. */
-  onChange: () => void;
+  /** Called on any value change; receives the changed "taskId.paramKey" so the
+   *  app can react to specific fields (e.g. propagating the project identity). */
+  onChange: (changedKey?: string) => void;
   help: HelpPanel;
 }
 
@@ -132,7 +133,7 @@ function buildControl(
   task: Task,
   param: Param,
   hooks: FormHooks,
-  notifyChanged: () => void,
+  notifyChanged: (changedKey?: string) => void,
 ): ControlBuild {
   const kind = controlFor(param);
   const wrapper = document.createElement("div");
@@ -156,7 +157,7 @@ function buildControl(
 
   const set = (value: unknown) => {
     store.setFormValue(stateKey(task, param), value);
-    notifyChanged();
+    notifyChanged(stateKey(task, param));
   };
   const focusHelp = () => hooks.help.show(helpHtmlFor(task, param));
 
@@ -373,9 +374,9 @@ export function renderForm(
   const refreshAll = () => builds.forEach((b) => b.refreshVisibility());
 
   // depends_on changes must re-evaluate visibility across the whole form.
-  const notifyChanged = () => {
+  const notifyChanged = (changedKey?: string) => {
     refreshAll();
-    hooks.onChange();
+    hooks.onChange(changedKey);
   };
 
   // Group params by ui.group (preserving first-seen order), sort within by order.
