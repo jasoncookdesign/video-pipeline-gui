@@ -66,15 +66,23 @@
       "produces": [
         "base"
       ],
-      "io": [
-        {
-          "artifact": "base",
-          "role": "output",
-          "via": "positional",
-          "order": 0
-        }
-      ],
+      "io": [],
       "params": [
+        {
+          "key": "name",
+          "type": "string",
+          "arity": "positional",
+          "control": "field",
+          "ui": {
+            "label": "Project name",
+            "group": "Setup"
+          },
+          "order": 0,
+          "required": true,
+          "hint": "Project folder name.",
+          "help": "Name of the project folder created under the projects root. Convention: \"YYYY-MM-DD Token Project - Hook\".",
+          "example": "YYYY-MM-DD Token Project - Hook"
+        },
         {
           "key": "identity",
           "type": "enum",
