@@ -4,7 +4,7 @@
 // form edits don't hammer the IPC boundary. No business logic — just persistence.
 
 import { ipc } from "./ipc";
-import type { AppState, SessionState, Theme } from "./types";
+import type { AppState, PanelLayout, SessionState, Theme } from "./types";
 
 const WRITE_DEBOUNCE_MS = 350;
 
@@ -87,6 +87,18 @@ class StateStore {
 
   setPreviewLayer(id: string | undefined): void {
     this.state.session.previewLayer = id;
+    this.scheduleFlush();
+  }
+
+  // ---- panel layout (resize sizes + collapsed flags) ----
+
+  getPanels(): PanelLayout {
+    return this.state.session.panels ?? {};
+  }
+
+  /** Merge a partial panel-layout update and persist (debounced). */
+  setPanels(patch: PanelLayout): void {
+    this.state.session.panels = { ...this.state.session.panels, ...patch };
     this.scheduleFlush();
   }
 

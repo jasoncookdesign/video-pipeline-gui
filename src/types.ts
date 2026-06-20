@@ -175,10 +175,21 @@ export interface PlanProgressEvent {
 
 export type Theme = "light" | "dark";
 
+/** Persisted panel arrangement (resize sizes in px + collapsed flags). */
+export interface PanelLayout {
+  rightWidth?: number;
+  rightCollapsed?: boolean;
+  helpHeight?: number;
+  helpCollapsed?: boolean;
+  logHeight?: number;
+  logCollapsed?: boolean;
+}
+
 export interface SessionState {
   formValues: Record<string, unknown>; // keyed "taskId.paramKey"
   previewLayer?: string;
   theme?: Theme;
+  panels?: PanelLayout;
 }
 
 export interface AppState {

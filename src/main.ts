@@ -293,11 +293,12 @@ async function boot(): Promise<void> {
   });
   cancelBtn.disabled = true;
 
-  // ---- resizable + collapsible panel wiring ----
+  // ---- resizable + collapsible panel wiring (restored from saved state) ----
   function setupPanels(): void {
     const grid = $("#grid");
     const center = $("#center");
     const right = $("#right");
+    const saved = store.getPanels();
     const mark = (btn: HTMLElement, c: boolean) =>
       (btn.dataset.collapsed = String(c));
 
@@ -308,9 +309,13 @@ async function boot(): Promise<void> {
       min: 260,
       max: 620,
       collapseAt: 150,
-      initial: 340,
-      apply: (px) => grid.style.setProperty("--right-w", `${px}px`),
-      onCollapsedChange: (c) => grid.classList.toggle("right-collapsed", c),
+      initialSize: saved.rightWidth ?? 340,
+      initialCollapsed: saved.rightCollapsed,
+      onChange: (px, c) => {
+        grid.style.setProperty("--right-w", `${c ? 0 : px}px`);
+        grid.classList.toggle("right-collapsed", c);
+        store.setPanels({ rightWidth: px, rightCollapsed: c });
+      },
     });
 
     // preview | help (inside right) — preview keeps the remainder; help collapses.
@@ -320,11 +325,13 @@ async function boot(): Promise<void> {
       min: 90,
       max: 460,
       collapseAt: 56,
-      initial: 220,
-      apply: (px) => right.style.setProperty("--help-h", `${px}px`),
-      onCollapsedChange: (c) => {
+      initialSize: saved.helpHeight ?? 220,
+      initialCollapsed: saved.helpCollapsed,
+      onChange: (px, c) => {
+        right.style.setProperty("--help-h", `${c ? 0 : px}px`);
         right.classList.toggle("help-collapsed", c);
         mark($("#help-collapse"), c);
+        store.setPanels({ helpHeight: px, helpCollapsed: c });
       },
     });
     $("#help-collapse").addEventListener("click", () => helpSplit.toggle());
@@ -336,11 +343,13 @@ async function boot(): Promise<void> {
       min: 80,
       max: 520,
       collapseAt: 52,
-      initial: 200,
-      apply: (px) => center.style.setProperty("--log-h", `${px}px`),
-      onCollapsedChange: (c) => {
+      initialSize: saved.logHeight ?? 200,
+      initialCollapsed: saved.logCollapsed,
+      onChange: (px, c) => {
+        center.style.setProperty("--log-h", `${c ? 0 : px}px`);
         center.classList.toggle("log-collapsed", c);
         mark($("#log-collapse"), c);
+        store.setPanels({ logHeight: px, logCollapsed: c });
       },
     });
     $("#log-collapse").addEventListener("click", () => logSplit.toggle());
