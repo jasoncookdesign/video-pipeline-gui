@@ -61,3 +61,15 @@ export async function pickPath(
   const typed = window.prompt(`${opts.title ?? `Enter a ${label}`}${hint}`, opts.defaultPath ?? "");
   return typed ? [typed] : null;
 }
+
+/** Native confirmation dialog (Tauri), falling back to window.confirm in a browser. */
+export async function confirmDialog(
+  message: string,
+  title = "Confirm",
+): Promise<boolean> {
+  if (tauriAvailable()) {
+    const { confirm } = await import("@tauri-apps/plugin-dialog");
+    return await confirm(message, { title, kind: "warning" });
+  }
+  return window.confirm(message);
+}
