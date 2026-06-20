@@ -77,15 +77,21 @@
       "params": [
         {
           "key": "identity",
-          "type": "string",
+          "type": "enum",
           "arity": "value",
-          "control": "field",
+          "control": "dropdown",
           "ui": {
             "label": "Identity",
             "group": "Setup"
           },
           "flag": "--identity",
+          "default": "dyson-hope",
           "required": true,
+          "options": [
+            "dyson-hope",
+            "jason-cook-design",
+            "sigil-zero"
+          ],
           "hint": "Brand/identity id for styling defaults.",
           "help": "Selects the caption style + glossary set for this creator identity (e.g. a DH or SIGIL.ZERO identity).",
           "example": "--identity dyson-hope"
@@ -576,15 +582,21 @@
       "params": [
         {
           "key": "identity",
-          "type": "string",
+          "type": "enum",
           "arity": "value",
-          "control": "field",
+          "control": "dropdown",
           "ui": {
             "label": "Identity",
             "group": "Setup"
           },
           "flag": "--identity",
+          "default": "dyson-hope",
           "required": true,
+          "options": [
+            "dyson-hope",
+            "jason-cook-design",
+            "sigil-zero"
+          ],
           "hint": "Identity for glossary + caption style.",
           "example": "--identity dyson-hope"
         },
@@ -728,14 +740,19 @@
       "params": [
         {
           "key": "identity",
-          "type": "string",
+          "type": "enum",
           "arity": "value",
-          "control": "field",
+          "control": "dropdown",
           "ui": {
             "label": "Identity",
             "group": "Style"
           },
           "flag": "--identity",
+          "options": [
+            "dyson-hope",
+            "jason-cook-design",
+            "sigil-zero"
+          ],
           "hint": "Override the identity style."
         },
         {
