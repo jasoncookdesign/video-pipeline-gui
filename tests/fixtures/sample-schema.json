@@ -84,6 +84,30 @@
           "example": "YYYY-MM-DD Token Project - Hook"
         },
         {
+          "key": "source",
+          "type": "path",
+          "arity": "value",
+          "control": "picker",
+          "ui": {
+            "label": "Source video",
+            "group": "Setup"
+          },
+          "flag": "--source",
+          "hint": "Source video to ingest.",
+          "help": "Pick the source clip. On run it is copied into the project — archived in source/ and seeded as the base layer (work/base.mp4) — so the reframe / rough-cut steps have their input. Browse or drag a file onto the field.",
+          "path": {
+            "kind": "file",
+            "extensions": [
+              "mp4",
+              "mov",
+              "m4v",
+              "webm",
+              "mkv",
+              "avi"
+            ]
+          }
+        },
+        {
           "key": "identity",
           "type": "enum",
           "arity": "value",
