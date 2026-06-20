@@ -19,11 +19,11 @@ import { store } from "./state";
 import { initTheme, toggleTheme } from "./theme";
 import { renderForm } from "./forms";
 import { mountCommandPreview } from "./command";
-import { mountPlanPanel, setSafezoneAdvisory } from "./plan";
 import { mountLog } from "./log";
 import { mountPreviewer } from "./previewer";
 import { setupDragDrop } from "./dnd";
 import { bindLabelHelp, helpMarkup, type HelpPanel } from "./help";
+import { makeSplitter } from "./splitter";
 
 const $ = <T extends HTMLElement>(sel: string): T => {
   const el = document.querySelector<T>(sel);
@@ -70,9 +70,34 @@ async function boot(): Promise<void> {
 
   // ---- mount the center/right widgets ----
   const cmdPreview = mountCommandPreview($("#cmd-bar"), schema);
-  const planPanel = mountPlanPanel($("#plan-panel"), schema);
   const logView = mountLog($("#log-view"));
   const previewer = mountPreviewer($("#previewer"), schema, help);
+
+  // ---- invalid-selection warning banner (replaces the plan panel) ----
+  const banner = $("#banner");
+  function planErrorToEnglish(raw: string): string {
+    if (/noproducer|no enabled task produces|consumes/i.test(raw)) {
+      return (
+        "This selection can't run yet: a step needs an input that no enabled step " +
+        "produces. Enable the step that creates it — for example, turn on " +
+        "“Propose rough cut” before “Render rough cut.”"
+      );
+    }
+    if (/cycle/i.test(raw)) {
+      return "This selection can't run: the chosen steps form a dependency loop.";
+    }
+    return `This selection can't run: ${raw}`;
+  }
+  async function validateSelection(enabledIds: string[]): Promise<void> {
+    try {
+      await ipc.buildPlan(enabledIds);
+      banner.hidden = true;
+      banner.textContent = "";
+    } catch (err) {
+      banner.textContent = planErrorToEnglish(String(err));
+      banner.hidden = false;
+    }
+  }
 
   // Top-bar concurrency cap: a help trigger on its label (the stepper itself
   // never showed help on focus).
@@ -89,7 +114,7 @@ async function boot(): Promise<void> {
   let selectedTask: Task | null = null;
 
   const refreshCommand = () => void cmdPreview.update(selectedTask);
-  const refreshPlan = () => void planPanel.refresh([...enabled]);
+  const refreshPlan = () => void validateSelection([...enabled]);
 
   // QoL: the earliest Identity control (project.init's) is the "project identity".
   // Choosing it pre-selects the same value on the later Identity controls so the
@@ -206,16 +231,17 @@ async function boot(): Promise<void> {
   // Native file/folder drag-drop onto path pickers (no-op outside Tauri).
   void setupDragDrop();
 
-  // ---- advisory safe-zone badge (SADD §4.2) ----
-  // We don't have a live qc.report parse here; default to "not all-clear" until
-  // a QC run reports clean. This only shows an advisory; it never blocks Run.
-  const advisory = $("#safezone-advisory");
-  setSafezoneAdvisory(advisory, false);
+  // ---- resizable / collapsible panels ----
+  setupPanels();
 
   // ---- backend event subscriptions ----
   await ipc.listen<LogLineEvent>("log-line", (p) => logView.push(p));
   await ipc.listen<TaskStatusEvent>("task-status", (p) => {
-    planPanel.setStatus(p.taskId, p.state);
+    // Run status colours the pipeline tree rows (the plan chips were removed).
+    const row = tree.querySelector<HTMLElement>(
+      `.tree__task[data-task="${CSS.escape(p.taskId)}"]`,
+    );
+    if (row) row.dataset.state = p.state;
     if (p.state === "Succeeded") {
       // A produced artifact may now exist — refresh available preview layers.
       void previewer.refresh(store.activeProjectRoot());
@@ -266,6 +292,59 @@ async function boot(): Promise<void> {
     if (selectedTask) void ipc.cancelTask(selectedTask.id);
   });
   cancelBtn.disabled = true;
+
+  // ---- resizable + collapsible panel wiring ----
+  function setupPanels(): void {
+    const grid = $("#grid");
+    const center = $("#center");
+    const right = $("#right");
+    const mark = (btn: HTMLElement, c: boolean) =>
+      (btn.dataset.collapsed = String(c));
+
+    // center | right — resizes the whole right panel; collapse hides it.
+    makeSplitter({
+      handle: $("#right-split"),
+      axis: "x",
+      min: 260,
+      max: 620,
+      collapseAt: 150,
+      initial: 340,
+      apply: (px) => grid.style.setProperty("--right-w", `${px}px`),
+      onCollapsedChange: (c) => grid.classList.toggle("right-collapsed", c),
+    });
+
+    // preview | help (inside right) — preview keeps the remainder; help collapses.
+    const helpSplit = makeSplitter({
+      handle: $("#right-help-split"),
+      axis: "y",
+      min: 90,
+      max: 460,
+      collapseAt: 56,
+      initial: 220,
+      apply: (px) => right.style.setProperty("--help-h", `${px}px`),
+      onCollapsedChange: (c) => {
+        right.classList.toggle("help-collapsed", c);
+        mark($("#help-collapse"), c);
+      },
+    });
+    $("#help-collapse").addEventListener("click", () => helpSplit.toggle());
+
+    // resolved command stays docked; this handle sizes/collapses the run output.
+    const logSplit = makeSplitter({
+      handle: $("#log-split"),
+      axis: "y",
+      min: 80,
+      max: 520,
+      collapseAt: 52,
+      initial: 200,
+      apply: (px) => center.style.setProperty("--log-h", `${px}px`),
+      onCollapsedChange: (c) => {
+        center.classList.toggle("log-collapsed", c);
+        mark($("#log-collapse"), c);
+      },
+    });
+    $("#log-collapse").addEventListener("click", () => logSplit.toggle());
+  }
 }
 
 void boot();
