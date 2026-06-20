@@ -17,12 +17,13 @@ import type {
 } from "./types";
 import { store } from "./state";
 import { initTheme, toggleTheme } from "./theme";
-import { renderForm, type HelpPanel } from "./forms";
+import { renderForm } from "./forms";
 import { mountCommandPreview } from "./command";
 import { mountPlanPanel, setSafezoneAdvisory } from "./plan";
 import { mountLog } from "./log";
 import { mountPreviewer } from "./previewer";
 import { setupDragDrop } from "./dnd";
+import { bindLabelHelp, helpMarkup, type HelpPanel } from "./help";
 
 const $ = <T extends HTMLElement>(sel: string): T => {
   const el = document.querySelector<T>(sel);
@@ -71,7 +72,19 @@ async function boot(): Promise<void> {
   const cmdPreview = mountCommandPreview($("#cmd-bar"), schema);
   const planPanel = mountPlanPanel($("#plan-panel"), schema);
   const logView = mountLog($("#log-view"));
-  const previewer = mountPreviewer($("#previewer"), schema);
+  const previewer = mountPreviewer($("#previewer"), schema, help);
+
+  // Top-bar concurrency cap: a help trigger on its label (the stepper itself
+  // never showed help on focus).
+  bindLabelHelp(
+    $("#cap-help"),
+    () =>
+      helpMarkup(
+        "Concurrency cap",
+        "Maximum number of independent tasks the scheduler runs at once within a level. Higher uses more CPU and memory; 2 is a sensible default on an M-series Mac.",
+      ),
+    help,
+  );
 
   let selectedTask: Task | null = null;
 

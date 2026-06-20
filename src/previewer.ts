@@ -20,13 +20,18 @@ import { ipc } from "./ipc";
 import type { Artifact, Schema } from "./types";
 import { store } from "./state";
 import { artifactPathsFor } from "./command";
+import { bindLabelHelp, helpMarkup, type HelpPanel } from "./help";
 
 export interface Previewer {
   /** Recompute which layers are available (present ∩ previewable) and rebuild. */
   refresh(projectRoot: string | undefined): Promise<void>;
 }
 
-export function mountPreviewer(host: HTMLElement, schema: Schema): Previewer {
+export function mountPreviewer(
+  host: HTMLElement,
+  schema: Schema,
+  help: HelpPanel,
+): Previewer {
   host.classList.add("previewer");
   host.innerHTML = `
     <div class="previewer__stage">
@@ -34,16 +39,37 @@ export function mountPreviewer(host: HTMLElement, schema: Schema): Previewer {
       <video class="previewer__video" playsinline preload="auto"></video>
     </div>
     <div class="previewer__controls">
-      <label class="previewer__layerlabel">Layer
+      <label class="previewer__layerlabel"><span data-help="layer">Layer</span>
         <select class="previewer__layers"></select>
       </label>
-      <label class="previewer__vollabel">Vol
+      <label class="previewer__vollabel"><span data-help="vol">Vol</span>
         <input class="previewer__vol" type="range" min="0" max="1" step="0.01" value="1" />
         <output class="previewer__volval">1.00</output>
       </label>
       <span class="previewer__status"></span>
     </div>
   `;
+
+  // Help triggers on the control labels (reachable even when the select is
+  // disabled because nothing is on disk yet).
+  bindLabelHelp(
+    host.querySelector<HTMLElement>('[data-help="layer"]')!,
+    () =>
+      helpMarkup(
+        "Preview layer",
+        "Choose which produced layer to preview — base video, caption overlay, etc. A layer becomes selectable once a run has written it to disk; absent layers are disabled.",
+      ),
+    help,
+  );
+  bindLabelHelp(
+    host.querySelector<HTMLElement>('[data-help="vol"]')!,
+    () =>
+      helpMarkup(
+        "Preview volume",
+        "Playback volume for the preview only (0.00–1.00). It does not affect the rendered output.",
+      ),
+    help,
+  );
 
   const video = host.querySelector<HTMLVideoElement>(".previewer__video")!;
   const select = host.querySelector<HTMLSelectElement>(".previewer__layers")!;

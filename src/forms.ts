@@ -9,12 +9,9 @@
 import type { Param, Task, ControlKind } from "./types";
 import { store } from "./state";
 import { pickPath } from "./dialog";
+import type { HelpPanel } from "./help";
 
-/** The help panel this engine drives on focus (SADD §3.6 — the GUI teaches CLI). */
-export interface HelpPanel {
-  show(html: string): void;
-  clear(): void;
-}
+export type { HelpPanel };
 
 export interface FormHooks {
   /** Called on any value change (debounced upstream) so previews re-resolve. */
@@ -145,7 +142,7 @@ function buildControl(
   const id = `ctl-${task.id}-${param.key}`.replace(/[^a-zA-Z0-9_-]/g, "_");
 
   const label = document.createElement("label");
-  label.className = "field__label";
+  label.className = "field__label help-label";
   label.htmlFor = id;
   label.textContent = param.ui.label;
   if (param.required) {
@@ -162,6 +159,13 @@ function buildControl(
     notifyChanged();
   };
   const focusHelp = () => hooks.help.show(helpHtmlFor(task, param));
+
+  // Clicking the label shows help without activating the control — so help is
+  // reachable for every control, including ones that can't take focus.
+  label.addEventListener("click", (e) => {
+    e.preventDefault();
+    focusHelp();
+  });
 
   const cur = currentValue(task, param);
   let input: HTMLElement;
