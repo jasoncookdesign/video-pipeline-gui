@@ -118,15 +118,26 @@ docs/
 
 ## Build & run
 
-These steps require a local toolchain — there is no prebuilt binary yet.
+These steps require a local toolchain — there is no prebuilt binary yet. On a
+fresh checkout, run the preflight first; it fails loud with a fix for anything
+missing rather than letting it surface later as a Rust panic or an ImportError:
+
+```bash
+bash scripts/setup-check.sh
+```
 
 **Prerequisites**
 
-- A **Rust toolchain** + `cargo`
-- **Node** (for the frontend build)
-- The **Tauri CLI**
+- A **Rust toolchain** + `cargo` (install via [rustup](https://rustup.rs); make
+  sure `~/.cargo/env` is sourced by your shell rc so `cargo` is on `PATH` in new
+  shells)
+- **Node** 18+ (for the frontend build)
 - A checkout of the [`video-pipeline`](../video-pipeline) repo (a sibling
-  directory by default; the contract test reads it to diff-check live emits)
+  directory by default; the contract test's live path reads it to diff-check
+  emits)
+
+The **Tauri CLI** is pulled in as a local `devDependency` by `npm install` — you
+do not need a global install.
 
 **Run the tests**
 
@@ -134,14 +145,21 @@ These steps require a local toolchain — there is no prebuilt binary yet.
 # Rust gateway + scheduler unit tests
 cd src-tauri && cargo test
 
-# Contract test: validates the committed fixture against the meta-schema,
-# and (if the sibling video-pipeline repo is importable) diff-checks a live
-# pipeline emit against the fixture to catch drift.
-python3 tests/contract_test.py
+# Python contract test — use an isolated venv so global site-packages can't
+# inject a wrong-architecture wheel (see Troubleshooting on Apple Silicon).
+python3 -m venv .venv
+./.venv/bin/pip install -r requirements-test.txt
+./.venv/bin/python tests/contract_test.py
 ```
 
-Point the contract test at a non-default pipeline checkout with the
-`VIDEO_PIPELINE_SRC` environment variable.
+That validates the committed fixture against the meta-schema. To also diff-check
+a **live** pipeline emit against the fixture, install the sibling pipeline into
+the same venv so its runtime deps come with it:
+
+```bash
+./.venv/bin/pip install -e ../video-pipeline   # or set VIDEO_PIPELINE_SRC
+./.venv/bin/python tests/contract_test.py
+```
 
 **Run the app**
 
@@ -180,3 +198,31 @@ the OS webview decoding HEVC-with-alpha in a plain `<video>` element. This is th
 one engine-dependent behavior in the design and is gated behind a de-risk spike
 before the relevant previewer phase is built. See
 [`docs/alpha-spike.md`](docs/alpha-spike.md).
+
+## Troubleshooting
+
+**`npm run tauri dev` → "Missing script: tauri".**
+You're on a checkout from before the CLI was wired in. Run `npm install` (the
+`tauri` script and `@tauri-apps/cli` devDependency are now in `package.json`). As
+a one-off you can also invoke `npx tauri dev`.
+
+**Rust compile panics at `generate_context!` → "failed to open
+src-tauri/icons/icon.png".**
+The icon set referenced by `src-tauri/tauri.conf.json` is missing. Regenerate it
+from the source mark and rebuild:
+
+```bash
+npm run tauri icon assets/icon-source.png   # writes src-tauri/icons/*
+```
+
+**Contract test fails on import with an `rpds` / "incompatible architecture"
+error (Apple Silicon).**
+Your interpreter is loading an x86_64 wheel from global site-packages under an
+arm64 runtime. Don't run the test against the global interpreter — use a fresh
+arm64 venv as shown under "Run the tests". `scripts/setup-check.sh` catches this
+before you hit it.
+
+**Contract test's live path fails with `ModuleNotFoundError` (e.g. `yaml`).**
+The live-emit path runs the real pipeline, which needs its own runtime deps.
+Install the pipeline into your venv (`pip install -e ../video-pipeline`) rather
+than chasing individual missing modules.
