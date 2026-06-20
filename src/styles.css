@@ -257,6 +257,12 @@ code, .mono { font-family: var(--mono); }
 .field__label { color: var(--text); font-size: 12.5px; }
 .field__req { color: var(--err); margin-left: 3px; }
 
+/* Any label wired as a help trigger: click shows help, dotted underline on hover
+   signals the affordance. Applies to form-field labels and the chrome-control
+   label text (cap, Layer, Vol). */
+.help-label { cursor: help; }
+.help-label:hover { text-decoration: underline dotted; text-underline-offset: 3px; }
+
 .field__input,
 .field__field,
 .field__select,
