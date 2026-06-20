@@ -85,7 +85,8 @@ export function mountCommandPreview(
   return {
     async update(task: Task | null): Promise<void> {
       if (!task) {
-        codeEl.textContent = "—";
+        codeEl.textContent = "Select a step to see the command it runs.";
+        codeEl.classList.add("cmd-preview__code--hint");
         lastText = "";
         return;
       }
@@ -99,8 +100,12 @@ export function mountCommandPreview(
         );
         lastText = argvToString(argv);
         codeEl.textContent = lastText;
+        codeEl.classList.remove("cmd-preview__code--hint");
       } catch (err) {
-        codeEl.textContent = `# ${String(err)}`;
+        codeEl.textContent = /required/i.test(String(err))
+          ? "Fill in the required fields (marked *) to build the command."
+          : "Complete the form to see the command that will run.";
+        codeEl.classList.add("cmd-preview__code--hint");
         lastText = "";
       }
     },

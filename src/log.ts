@@ -35,11 +35,13 @@ export function mountLog(host: HTMLElement): LogView {
     <div class="log__scroll" tabindex="0">
       <div class="log__spacer-top"></div>
       <div class="log__window"></div>
+      <div class="log__empty empty-state"><span>Run output appears here. Set up the steps, then press Run to start the pipeline.</span></div>
     </div>
   `;
   const scrollEl = host.querySelector<HTMLElement>(".log__scroll")!;
   const spacerTop = host.querySelector<HTMLElement>(".log__spacer-top")!;
   const windowEl = host.querySelector<HTMLElement>(".log__window")!;
+  const emptyEl = host.querySelector<HTMLElement>(".log__empty")!;
   const countEl = host.querySelector<HTMLElement>(".log__count")!;
   const fullBtn = host.querySelector<HTMLButtonElement>(".log__full")!;
   const clearBtn = host.querySelector<HTMLButtonElement>(".log__clear")!;
@@ -119,6 +121,7 @@ export function mountLog(host: HTMLElement): LogView {
 
     const dropNote = dropped > 0 ? ` (+${dropped} dropped)` : "";
     countEl.textContent = `${total} lines${dropNote}`;
+    emptyEl.hidden = total > 0;
 
     if (pinnedToBottom) {
       scrollEl.scrollTop = scrollEl.scrollHeight;

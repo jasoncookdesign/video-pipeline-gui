@@ -37,6 +37,7 @@ export function mountPreviewer(
     <div class="previewer__stage">
       <div class="previewer__backdrop" aria-hidden="true"></div>
       <video class="previewer__video" playsinline preload="auto"></video>
+      <div class="previewer__empty empty-state"><span></span></div>
     </div>
     <div class="previewer__controls">
       <label class="previewer__layerlabel"><span data-help="layer">Layer</span>
@@ -76,6 +77,16 @@ export function mountPreviewer(
   const vol = host.querySelector<HTMLInputElement>(".previewer__vol")!;
   const volVal = host.querySelector<HTMLOutputElement>(".previewer__volval")!;
   const status = host.querySelector<HTMLElement>(".previewer__status")!;
+  const emptyEl = host.querySelector<HTMLElement>(".previewer__empty > span")!;
+  const emptyBox = host.querySelector<HTMLElement>(".previewer__empty")!;
+
+  const showEmpty = (text: string) => {
+    emptyEl.textContent = text;
+    emptyBox.hidden = false;
+  };
+  const hideEmpty = () => {
+    emptyBox.hidden = true;
+  };
 
   // --- global volume coefficient (b) ---
   const applyVolume = () => {
@@ -96,6 +107,7 @@ export function mountPreviewer(
    * Captures BEFORE the swap; restores after 'loadeddata'.
    */
   function swapSource(src: string, artifact: Artifact): void {
+    hideEmpty();
     const wasTime = video.currentTime;
     const wasPlaying = !video.paused && !video.ended;
 
@@ -139,6 +151,7 @@ export function mountPreviewer(
     store.setPreviewLayer(id);
     if (!presentIds.has(id) || !src) {
       status.textContent = `${id} · not on disk yet`;
+      showEmpty(`The “${id}” layer hasn't been rendered yet — run the step that produces it to preview it here.`);
       return;
     }
     swapSource(src, artifact);
@@ -178,7 +191,10 @@ export function mountPreviewer(
         select.value = chosen;
         selectLayer(chosen, presentIds);
       } else {
-        status.textContent = "No previewable layers on disk yet";
+        status.textContent = "";
+        showEmpty(
+          "Layer preview. Once a step renders a layer (base video, caption overlay…), pick it here to play it back.",
+        );
       }
     },
   };
