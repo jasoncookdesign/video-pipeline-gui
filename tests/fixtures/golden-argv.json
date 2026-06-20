@@ -5,6 +5,7 @@
       "name": "project_init_min",
       "task": "project.init",
       "form_values": {
+        "name": "2026-06-20 Demo - Test Hook",
         "identity": "dyson-hope"
       },
       "artifact_paths": {
@@ -13,7 +14,7 @@
       "argv": [
         "video-pipeline",
         "project-init",
-        "work/base.mp4",
+        "2026-06-20 Demo - Test Hook",
         "--identity",
         "dyson-hope",
         "--profile",
@@ -24,6 +25,7 @@
       "name": "project_init_full",
       "task": "project.init",
       "form_values": {
+        "name": "2026-06-20 Full Build - Hook",
         "identity": "dyson-hope",
         "profile": "feed-square-1x1",
         "root": "/Users/x/Video/Projects",
@@ -35,7 +37,7 @@
       "argv": [
         "video-pipeline",
         "project-init",
-        "work/base.mp4",
+        "2026-06-20 Full Build - Hook",
         "--identity",
         "dyson-hope",
         "--profile",
