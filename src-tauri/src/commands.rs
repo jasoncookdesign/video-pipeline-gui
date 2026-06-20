@@ -111,7 +111,15 @@ pub async fn resolve_argv(
     artifact_paths: HashMap<String, String>,
 ) -> Result<Vec<String>, String> {
     let s = current_schema(&ctx).await?;
-    core_resolve_argv(&s, &task_id, &form_values, &artifact_paths).map_err(|e| e.to_string())
+    // The frontend sends the whole form map keyed "task_id.param"; the assembler
+    // wants this task's values keyed by bare param. Strip the prefix (as the
+    // supervisor does) so the preview reflects entered values.
+    let prefix = format!("{task_id}.");
+    let scoped: HashMap<String, Value> = form_values
+        .iter()
+        .filter_map(|(k, v)| k.strip_prefix(&prefix).map(|key| (key.to_string(), v.clone())))
+        .collect();
+    core_resolve_argv(&s, &task_id, &scoped, &artifact_paths).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

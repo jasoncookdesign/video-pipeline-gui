@@ -24,6 +24,8 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        // Persists window size + position across launches (saved on exit / restored on start).
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .setup(|app| {
             let ctx = commands::make_ctx(&app.handle());
             app.manage(ctx);
