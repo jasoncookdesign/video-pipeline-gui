@@ -25,6 +25,8 @@ import { bindLabelHelp, helpMarkup, type HelpPanel } from "./help";
 export interface Previewer {
   /** Recompute which layers are available (present ∩ previewable) and rebuild. */
   refresh(projectRoot: string | undefined): Promise<void>;
+  /** Lock the stage aspect ratio to the output profile (e.g. "feed-square-1x1"). */
+  setProfile(profile: string): void;
 }
 
 export function mountPreviewer(
@@ -34,10 +36,12 @@ export function mountPreviewer(
 ): Previewer {
   host.classList.add("previewer");
   host.innerHTML = `
-    <div class="previewer__stage">
-      <div class="previewer__backdrop" aria-hidden="true"></div>
-      <video class="previewer__video" playsinline preload="auto"></video>
-      <div class="previewer__empty empty-state"><span></span></div>
+    <div class="previewer__stagewrap">
+      <div class="previewer__stage">
+        <div class="previewer__backdrop" aria-hidden="true"></div>
+        <video class="previewer__video" playsinline preload="auto"></video>
+        <div class="previewer__empty empty-state"><span></span></div>
+      </div>
     </div>
     <div class="previewer__controls">
       <label class="previewer__layerlabel"><span data-help="layer">Layer</span>
@@ -72,6 +76,8 @@ export function mountPreviewer(
     help,
   );
 
+  const stageWrap = host.querySelector<HTMLElement>(".previewer__stagewrap")!;
+  const stage = host.querySelector<HTMLElement>(".previewer__stage")!;
   const video = host.querySelector<HTMLVideoElement>(".previewer__video")!;
   const select = host.querySelector<HTMLSelectElement>(".previewer__layers")!;
   const vol = host.querySelector<HTMLInputElement>(".previewer__vol")!;
@@ -87,6 +93,34 @@ export function mountPreviewer(
   const hideEmpty = () => {
     emptyBox.hidden = true;
   };
+
+  // Stage sizing: the aspect ratio is locked to the output profile; the size is
+  // free — fit the largest box of that ratio inside the available area.
+  let aspect = 9 / 16; // default (reels) until setProfile runs
+  function fitStage(): void {
+    const availW = stageWrap.clientWidth;
+    const availH = stageWrap.clientHeight;
+    if (availW <= 0 || availH <= 0) return;
+    let w = availW;
+    let h = availW / aspect;
+    if (h > availH) {
+      h = availH;
+      w = availH * aspect;
+    }
+    stage.style.width = `${Math.floor(w)}px`;
+    stage.style.height = `${Math.floor(h)}px`;
+  }
+  new ResizeObserver(() => fitStage()).observe(stageWrap);
+
+  function setProfile(profile: string): void {
+    const m = /(\d+)x(\d+)/.exec(profile);
+    if (m) {
+      const w = Number(m[1]);
+      const h = Number(m[2]);
+      if (w > 0 && h > 0) aspect = w / h;
+    }
+    fitStage();
+  }
 
   // --- global volume coefficient (b) ---
   const applyVolume = () => {
@@ -197,5 +231,6 @@ export function mountPreviewer(
         );
       }
     },
+    setProfile,
   };
 }

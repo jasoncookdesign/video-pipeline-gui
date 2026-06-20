@@ -130,6 +130,13 @@ class StateStore {
       /* persistence is best-effort; never block the UI on a write */
     }
   }
+
+  /** Wipe all retained state (field values, panels, theme, projects) and persist
+   *  the cleared state. The caller reloads to rebuild the UI from defaults. */
+  async reset(): Promise<void> {
+    this.state = emptyState();
+    await this.flush();
+  }
 }
 
 export const store = new StateStore();

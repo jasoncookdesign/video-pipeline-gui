@@ -457,11 +457,14 @@ code, .mono { font-family: var(--mono); }
   padding: 10px 12px; min-height: 0; overflow: hidden;
   display: flex; flex-direction: column; gap: 8px;
 }
+/* fills the available area and centers the aspect-locked stage inside it */
+.previewer__stagewrap {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+/* width/height are set in JS to the largest box of the profile's aspect ratio */
 .previewer__stage {
   position: relative;
-  width: 100%;
-  flex: 1 1 auto;
-  min-height: 120px;
   border: 1px solid var(--border-strong);
   border-radius: 6px;
   overflow: hidden;

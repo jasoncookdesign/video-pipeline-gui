@@ -22,6 +22,7 @@ import { mountCommandPreview } from "./command";
 import { mountLog } from "./log";
 import { mountPreviewer } from "./previewer";
 import { setupDragDrop } from "./dnd";
+import { confirmDialog } from "./dialog";
 import { bindLabelHelp, helpMarkup, type HelpPanel } from "./help";
 import { makeSplitter } from "./splitter";
 
@@ -116,23 +117,30 @@ async function boot(): Promise<void> {
   const refreshCommand = () => void cmdPreview.update(selectedTask);
   const refreshPlan = () => void validateSelection([...enabled]);
 
-  // QoL: the earliest Identity control (project.init's) is the "project identity".
-  // Choosing it pre-selects the same value on the later Identity controls so the
-  // user doesn't re-pick it per step. The controls stay independent — editing a
-  // downstream one doesn't propagate back, and these are still separate CLI args.
-  const identityTaskIds = schema.tasks
-    .filter((t) => t.params.some((p) => p.key === "identity"))
-    .map((t) => t.id);
-  const projectIdentityKey =
-    identityTaskIds.length > 0 ? `${identityTaskIds[0]}.identity` : null;
-  const downstreamIdentityKeys = identityTaskIds
-    .slice(1)
-    .map((id) => `${id}.identity`);
+  // QoL: a project-wide control (the earliest task that carries it — project.init)
+  // pre-fills the same value on the later steps' copies of that control, so the
+  // user sets it once. The controls stay independent (editing a downstream one
+  // doesn't propagate back) and remain separate CLI args.
+  const sharedProps = ["identity", "profile"]
+    .map((key) => {
+      const taskIds = schema.tasks
+        .filter((t) => t.params.some((p) => p.key === key))
+        .map((t) => t.id);
+      return {
+        key,
+        sourceKey: taskIds.length > 0 ? `${taskIds[0]}.${key}` : null,
+        downstreamKeys: taskIds.slice(1).map((id) => `${id}.${key}`),
+      };
+    })
+    .filter((s): s is { key: string; sourceKey: string; downstreamKeys: string[] } => s.sourceKey !== null);
 
   const onFormChange = (changedKey?: string): void => {
-    if (changedKey && changedKey === projectIdentityKey) {
-      const val = store.getFormValue(changedKey);
-      for (const k of downstreamIdentityKeys) store.setFormValue(k, val);
+    for (const s of sharedProps) {
+      if (changedKey && changedKey === s.sourceKey) {
+        const val = store.getFormValue(changedKey);
+        for (const k of s.downstreamKeys) store.setFormValue(k, val);
+        if (s.key === "profile") previewer.setProfile(String(val ?? ""));
+      }
     }
     refreshCommand();
   };
@@ -228,6 +236,16 @@ async function boot(): Promise<void> {
   refreshPlan();
   void previewer.refresh(store.activeProjectRoot());
 
+  // Lock the preview aspect to the project profile (stored value or schema default).
+  const profileProp = sharedProps.find((s) => s.key === "profile");
+  if (profileProp) {
+    const stored = store.getFormValue(profileProp.sourceKey);
+    const def = schema.tasks
+      .flatMap((t) => t.params)
+      .find((p) => p.key === "profile")?.default;
+    previewer.setProfile(String(stored ?? def ?? "reels-9x16"));
+  }
+
   // Native file/folder drag-drop onto path pickers (no-op outside Tauri).
   void setupDragDrop();
 
@@ -296,6 +314,20 @@ async function boot(): Promise<void> {
     if (selectedTask) void ipc.cancelTask(selectedTask.id);
   });
   cancelBtn.disabled = true;
+
+  // Reset everything to defaults (confirmed), then reload to rebuild from scratch.
+  const resetBtn = $<HTMLButtonElement>("#reset-btn");
+  resetBtn.addEventListener("click", () => {
+    void (async () => {
+      const ok = await confirmDialog(
+        "Reset all fields, panel sizes, and theme to their defaults? This clears your saved values and reloads the app.",
+        "Reset to defaults",
+      );
+      if (!ok) return;
+      await store.reset();
+      location.reload();
+    })();
+  });
 
   // ---- resizable + collapsible panel wiring (restored from saved state) ----
   function setupPanels(): void {
