@@ -28,6 +28,15 @@ export interface UiSpec {
   depends_on?: DependsOn;
 }
 
+export type PathKind = "file" | "directory";
+
+/** Picker/drag-drop metadata for a `type: "path"` param. */
+export interface PathSpec {
+  kind: PathKind;
+  extensions?: string[]; // files only, lowercase, dot-less
+  multiple?: boolean;
+}
+
 export interface Param {
   key: string;
   type: ParamType;
@@ -44,6 +53,7 @@ export interface Param {
   hint?: string;
   help?: string;
   example?: string;
+  path?: PathSpec;
   ui: UiSpec;
 }
 

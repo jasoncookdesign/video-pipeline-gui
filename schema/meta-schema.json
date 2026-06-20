@@ -38,6 +38,16 @@
   },
   "definitions": {
     "id": {"type": "string", "pattern": "^[a-z0-9]+([._-][a-z0-9]+)*$"},
+    "path_spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {"enum": ["file", "directory"]},
+        "extensions": {"type": "array", "items": {"type": "string"}},
+        "multiple": {"type": "boolean"}
+      }
+    },
     "ui": {
       "type": "object",
       "additionalProperties": false,
@@ -77,6 +87,7 @@
         "hint": {"type": "string"},
         "help": {"type": "string"},
         "example": {"type": "string"},
+        "path": {"$ref": "#/definitions/path_spec"},
         "ui": {"$ref": "#/definitions/ui"}
       },
       "allOf": [

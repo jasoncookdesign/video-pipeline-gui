@@ -57,6 +57,23 @@ pub struct Ui {
     pub depends_on: Option<DependsOn>,
 }
 
+/// Selection metadata for a `type = "path"` param: drives the GUI's native
+/// file/folder picker + drag-drop filtering. Round-trips through the gateway; the
+/// Rust core does not otherwise use it (it's a frontend concern).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PathSpec {
+    #[serde(default = "default_path_kind")]
+    pub kind: String, // file | directory
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extensions: Option<Vec<String>>,
+    #[serde(default)]
+    pub multiple: bool,
+}
+
+fn default_path_kind() -> String {
+    "file".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Param {
     pub key: String,
@@ -87,6 +104,8 @@ pub struct Param {
     pub help: String,
     #[serde(default)]
     pub example: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<PathSpec>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

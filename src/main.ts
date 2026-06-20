@@ -22,6 +22,7 @@ import { mountCommandPreview } from "./command";
 import { mountPlanPanel, setSafezoneAdvisory } from "./plan";
 import { mountLog } from "./log";
 import { mountPreviewer } from "./previewer";
+import { setupDragDrop } from "./dnd";
 
 const $ = <T extends HTMLElement>(sel: string): T => {
   const el = document.querySelector<T>(sel);
@@ -167,6 +168,9 @@ async function boot(): Promise<void> {
   // Initial plan + previewer pass.
   refreshPlan();
   void previewer.refresh(store.activeProjectRoot());
+
+  // Native file/folder drag-drop onto path pickers (no-op outside Tauri).
+  void setupDragDrop();
 
   // ---- advisory safe-zone badge (SADD §4.2) ----
   // We don't have a live qc.report parse here; default to "not all-clear" until

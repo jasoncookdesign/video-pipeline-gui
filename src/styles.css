@@ -81,15 +81,24 @@ code, .mono { font-family: var(--mono); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 14px;
-  height: 44px;
+  gap: 8px;
+  padding: 4px 14px;
+  min-height: 44px;
   background: var(--bg-raised);
   border-bottom: 1px solid var(--border);
   flex: 0 0 auto;
+  /* Wrap rather than clip when the window is too narrow for one row — the Run /
+     Cancel / theme controls must never be pushed off-screen. */
+  flex-wrap: wrap;
+  row-gap: 4px;
 }
-.topbar__left, .topbar__right { display: flex; align-items: center; gap: 12px; }
-.topbar__title { font-weight: 600; letter-spacing: 0.2px; }
-.topbar__engine { color: var(--text-dim); font-family: var(--mono); font-size: 12px; }
+.topbar__left, .topbar__right { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.topbar__right { flex: 0 0 auto; }
+.topbar__title { font-weight: 600; letter-spacing: 0.2px; white-space: nowrap; }
+.topbar__engine {
+  color: var(--text-dim); font-family: var(--mono); font-size: 12px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+}
 .topbar__mode {
   font-family: var(--mono);
   font-size: 10px;
@@ -128,12 +137,19 @@ code, .mono { font-family: var(--mono); }
 .btn--ghost { background: transparent; }
 
 /* ---------- main grid (three panes) ---------- */
+/* Side panes are fluid (clamp) so the center never starves and nothing clips as
+   the window narrows; named areas let the layout reflow at the breakpoints below. */
 #grid {
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: 248px minmax(0, 1fr) 340px;
+  grid-template-columns: clamp(200px, 20vw, 248px) minmax(0, 1fr) clamp(300px, 26vw, 360px);
+  grid-template-areas: "left center right";
   min-height: 0;
+  min-width: 0;
 }
+#left   { grid-area: left; }
+#center { grid-area: center; }
+#right  { grid-area: right; }
 
 .pane {
   min-height: 0;
@@ -185,8 +201,17 @@ code, .mono { font-family: var(--mono); }
 /* ---------- center stack ---------- */
 #center {
   display: grid;
+  /* Constrain the single column to the cell width with a 0 minimum. Without an
+     explicit column the grid defaults to an `auto` (max-content) column, so the
+     widest row — a form group or the resolved-command line — sets the width and
+     overflows the pane (which clips it). With this, each row fits and its own
+     overflow:auto scrolls instead. */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1.2fr) auto auto minmax(120px, 1fr);
 }
+/* Let every center row shrink so inner scroll regions engage rather than the
+   content blowing out the column. */
+#center > * { min-width: 0; }
 .center__form { padding: 14px 18px; }
 .center__cmd { flex: 0 0 auto; }
 .center__plan { flex: 0 0 auto; border-top: 1px solid var(--border); }
@@ -258,8 +283,17 @@ code, .mono { font-family: var(--mono); }
   font-size: 12px; color: var(--text-dim);
 }
 
-.field__pickerrow { display: flex; gap: 8px; }
+.field__pickerrow { display: flex; gap: 8px; border-radius: 6px; }
 .field__pickerrow .field__field { flex: 1 1 auto; }
+/* drag-drop affordances: every compatible picker hints during a drag; the one
+   under the cursor is emphasised. Outline (not border) so layout never shifts. */
+.field__pickerrow.dnd-eligible {
+  outline: 1px dashed var(--accent-dim); outline-offset: 3px;
+}
+.field__pickerrow.dnd-over {
+  outline: 2px solid var(--accent); outline-offset: 3px;
+  background: var(--accent-dim); border-radius: 6px;
+}
 .field__browse {
   flex: 0 0 auto; border: 1px solid var(--border-strong);
   background: var(--bg-sunken); color: var(--text-dim);
@@ -350,12 +384,19 @@ code, .mono { font-family: var(--mono); }
 .log__line--stderr .log__text { color: var(--err); }
 
 /* ---------- previewer ---------- */
-.previewer { padding: 10px 12px; flex: 0 0 auto; }
+/* Shrinkable so the layer/volume controls and the help panel below it are never
+   pushed off-screen on a short window: the stage gives up height first. */
+.previewer {
+  padding: 10px 12px; flex: 0 1 auto; min-height: 0;
+  display: flex; flex-direction: column; gap: 8px;
+}
 .previewer__stage {
   position: relative;
   width: 100%;
   aspect-ratio: 9 / 16;
   max-height: 46vh;
+  min-height: 120px;
+  flex: 0 1 auto;
   margin: 0 auto;
   border: 1px solid var(--border-strong);
   border-radius: 6px;
@@ -384,7 +425,7 @@ code, .mono { font-family: var(--mono); }
 }
 .previewer__controls {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  margin-top: 8px;
+  flex: 0 0 auto;
 }
 .previewer__layerlabel, .previewer__vollabel {
   display: flex; align-items: center; gap: 6px;
@@ -422,6 +463,31 @@ code, .mono { font-family: var(--mono); }
   padding-top: 8px; border-top: 1px solid var(--border);
 }
 .help__example code { color: var(--text); white-space: pre-wrap; word-break: break-word; }
+
+/* ---------- responsive reflow ---------- */
+/* Mid-size windows: tighten the side rails and the form's label column so the
+   center inputs stay usable instead of being squeezed toward zero width. */
+@media (max-width: 1180px) {
+  #grid {
+    grid-template-columns: clamp(168px, 22vw, 212px) minmax(0, 1fr) clamp(248px, 30vw, 300px);
+  }
+  .field { grid-template-columns: 120px minmax(0, 1fr); }
+}
+
+/* Narrow windows: stack the preview/help pane beneath the center while the step
+   tree stays as a slim left rail. Every pane stays reachable — nothing clips. */
+@media (max-width: 860px) {
+  #grid {
+    grid-template-columns: minmax(150px, 200px) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1.5fr) minmax(200px, 0.85fr);
+    grid-template-areas:
+      "left center"
+      "left right";
+  }
+  #right { grid-area: right; border-left: none; border-top: 1px solid var(--border); }
+  .field { grid-template-columns: 1fr; gap: 4px; }
+  .field__label { font-size: 12px; }
+}
 
 /* scrollbars */
 *::-webkit-scrollbar { width: 10px; height: 10px; }
