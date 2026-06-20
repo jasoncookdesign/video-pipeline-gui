@@ -29,7 +29,8 @@
         "identity": "dyson-hope",
         "profile": "feed-square-1x1",
         "root": "/Users/x/Video/Projects",
-        "no_trim_filler": true
+        "no_trim_filler": true,
+        "source": "/Users/x/Movies/raw.mov"
       },
       "artifact_paths": {
         "base": "work/base.mp4"
@@ -38,6 +39,8 @@
         "video-pipeline",
         "project-init",
         "2026-06-20 Full Build - Hook",
+        "--source",
+        "/Users/x/Movies/raw.mov",
         "--identity",
         "dyson-hope",
         "--profile",
