@@ -3,8 +3,8 @@
 // bounded list (~5000 rows; oldest evicted), autoscroll when pinned to the
 // bottom, and show a watermark while empty. Rows wrap rather than truncate, so a
 // long resolved-argv line or stack trace stays readable. It prints the resolved
-// argv at task start (the runner emits that as a stdout line). "Open full log" is
-// a stub affordance (the full log lives backend-side).
+// argv at task start (the runner emits that as a stdout line). Copy puts the whole
+// view on the clipboard so output is easy to share.
 
 import type { LogLineEvent } from "./types";
 
@@ -21,7 +21,7 @@ export function mountLog(host: HTMLElement): LogView {
     <div class="log__toolbar">
       <span class="log__count">0 lines</span>
       <span class="log__spacer"></span>
-      <button class="log__full" type="button" title="Open the full log (backend)">Open full log…</button>
+      <button class="log__copy" type="button" title="Copy all output to the clipboard">Copy</button>
       <button class="log__clear" type="button" title="Clear the view">Clear</button>
     </div>
     <div class="log__scroll" tabindex="0">
@@ -33,7 +33,7 @@ export function mountLog(host: HTMLElement): LogView {
   const windowEl = host.querySelector<HTMLElement>(".log__window")!;
   const emptyEl = host.querySelector<HTMLElement>(".log__empty")!;
   const countEl = host.querySelector<HTMLElement>(".log__count")!;
-  const fullBtn = host.querySelector<HTMLButtonElement>(".log__full")!;
+  const copyBtn = host.querySelector<HTMLButtonElement>(".log__copy")!;
   const clearBtn = host.querySelector<HTMLButtonElement>(".log__clear")!;
 
   let dropped = 0;
@@ -44,6 +44,7 @@ export function mountLog(host: HTMLElement): LogView {
     const dropNote = dropped > 0 ? ` (+${dropped} dropped)` : "";
     countEl.textContent = `${n} lines${dropNote}`;
     emptyEl.hidden = n > 0; // watermark only while empty
+    copyBtn.disabled = n === 0;
   }
 
   function append(e: LogLineEvent): void {
@@ -68,9 +69,24 @@ export function mountLog(host: HTMLElement): LogView {
       scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 4;
   });
 
-  fullBtn.addEventListener("click", () => {
-    fullBtn.textContent = "Full log → backend (stub)";
-    setTimeout(() => (fullBtn.textContent = "Open full log…"), 1500);
+  copyBtn.addEventListener("click", () => {
+    const text = Array.from(windowEl.children)
+      .map((row) => {
+        const tag = row.querySelector(".log__tag")?.textContent ?? "";
+        const txt = row.querySelector(".log__text")?.textContent ?? "";
+        return `${tag}\t${txt}`;
+      })
+      .join("\n");
+    if (!text) return;
+    void navigator.clipboard?.writeText(text).then(
+      () => {
+        copyBtn.textContent = "Copied";
+        setTimeout(() => (copyBtn.textContent = "Copy"), 1200);
+      },
+      () => {
+        /* clipboard may be unavailable; ignore */
+      },
+    );
   });
   clearBtn.addEventListener("click", () => {
     windowEl.replaceChildren();

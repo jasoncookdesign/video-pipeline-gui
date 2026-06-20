@@ -6,7 +6,7 @@
 // its own — every rule lives behind the IPC boundary.
 
 import "./styles.css";
-import { ipc, IPC_MODE } from "./ipc";
+import { ipc } from "./ipc";
 import type {
   LogLineEvent,
   PlanProgressEvent,
@@ -35,9 +35,6 @@ const $ = <T extends HTMLElement>(sel: string): T => {
 async function boot(): Promise<void> {
   await store.load();
   initTheme();
-
-  // Reflect the runtime mode in the top bar (helps during dev).
-  $("#mode-badge").textContent = IPC_MODE === "tauri" ? "tauri" : "mock";
 
   let schema: Schema;
   try {
@@ -89,15 +86,41 @@ async function boot(): Promise<void> {
     }
     return `This selection can't run: ${raw}`;
   }
+  let lastPlanValid = true;
   async function validateSelection(enabledIds: string[]): Promise<void> {
     try {
       await ipc.buildPlan(enabledIds);
       banner.hidden = true;
       banner.textContent = "";
+      lastPlanValid = true;
     } catch (err) {
       banner.textContent = planErrorToEnglish(String(err));
       banner.hidden = false;
+      lastPlanValid = false;
     }
+    updateRunEnabled();
+  }
+
+  // A run can complete only if the selection is a valid graph AND every enabled
+  // task's required inputs have a value (or a default).
+  function requiredInputsSatisfied(enabledIds: string[]): boolean {
+    const set = new Set(enabledIds);
+    for (const t of schema.tasks) {
+      if (!set.has(t.id)) continue;
+      for (const p of t.params) {
+        if (!p.required) continue;
+        const v = store.getFormValue(`${t.id}.${p.key}`);
+        const provided = v !== undefined && v !== null && v !== "";
+        const hasDefault =
+          p.default !== undefined && p.default !== null && p.default !== "";
+        if (!provided && !hasDefault) return false;
+      }
+    }
+    return true;
+  }
+  function updateRunEnabled(): void {
+    const ok = lastPlanValid && requiredInputsSatisfied([...enabled]);
+    $<HTMLButtonElement>("#run-btn").disabled = !ok;
   }
 
   // Top-bar concurrency cap: a help trigger on its label (the stepper itself
@@ -143,6 +166,7 @@ async function boot(): Promise<void> {
       }
     }
     refreshCommand();
+    updateRunEnabled();
   };
 
   // ---- left tree: steps -> tasks with enable toggles ----

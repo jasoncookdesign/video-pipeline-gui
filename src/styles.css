@@ -132,10 +132,12 @@ code, .mono { font-family: var(--mono); }
   cursor: pointer;
   font-family: var(--sans);
 }
-.btn:hover { border-color: var(--accent); }
+.btn:not(:disabled):hover { border-color: var(--accent); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn--run { background: var(--run); border-color: var(--run); color: #fff; font-weight: 600; }
 .btn--cancel { color: var(--err); }
+/* a disabled button shouldn't read as colored/active */
+.btn--cancel:disabled { color: var(--text-dim); }
 .btn--ghost { background: transparent; }
 .btn--icon { padding: 5px 8px; display: inline-flex; align-items: center; }
 .btn--icon svg { width: 15px; height: 15px; display: block; }
@@ -383,7 +385,8 @@ code, .mono { font-family: var(--mono); }
   background: var(--bg-raised); color: var(--text);
   border-radius: 4px; padding: 3px 10px; cursor: pointer; font-size: 11px;
 }
-.cmd-preview__copy:hover { border-color: var(--accent); }
+.cmd-preview__copy:not(:disabled):hover { border-color: var(--accent); }
+.cmd-preview__copy:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ---------- plan panel ---------- */
 .center__plan .pane__title { border-bottom: none; }
@@ -425,12 +428,13 @@ code, .mono { font-family: var(--mono); }
 }
 .log__count { font-size: 11px; color: var(--text-dim); font-family: var(--mono); }
 .log__spacer { flex: 1 1 auto; }
-.log__full, .log__clear {
+.log__copy, .log__clear {
   border: 1px solid var(--border); background: var(--bg-sunken);
   color: var(--text-dim); border-radius: 4px; padding: 2px 9px;
   font-size: 11px; cursor: pointer;
 }
-.log__full:hover, .log__clear:hover { border-color: var(--accent); }
+.log__copy:not(:disabled):hover, .log__clear:hover { border-color: var(--accent); }
+.log__copy:disabled { opacity: 0.45; cursor: not-allowed; }
 .log__scroll {
   position: relative;
   flex: 1 1 auto; min-height: 0; overflow-y: auto;

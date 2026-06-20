@@ -7,6 +7,7 @@
     "core:default",
     "core:event:default",
     "dialog:default",
-    "core:path:default"
+    "core:path:default",
+    "window-state:default"
   ]
 }
