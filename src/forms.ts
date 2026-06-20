@@ -8,6 +8,7 @@
 
 import type { Param, Task, ControlKind } from "./types";
 import { store } from "./state";
+import { pickPath } from "./dialog";
 
 /** The help panel this engine drives on focus (SADD §3.6 — the GUI teaches CLI). */
 export interface HelpPanel {
@@ -241,24 +242,51 @@ function buildControl(
       break;
     }
     case "picker": {
-      // A path picker: a text field + a Browse stub. Real file dialog is a
-      // backend concern (Tauri dialog plugin); here we accept a typed path.
+      // A path picker: a text field + a Browse button that opens the native
+      // chooser, plus a drag-drop target (dnd.ts). The PathSpec (file/dir +
+      // extensions) drives both the chooser's filters and drop validation.
+      const spec = param.path ?? { kind: "file" as const };
       const row = document.createElement("div");
       row.className = "field__pickerrow";
+      // Data attributes let dnd.ts validate a dropped path against this picker.
+      row.dataset.pathKind = spec.kind ?? "file";
+      if (spec.extensions && spec.extensions.length) {
+        row.dataset.pathExt = spec.extensions.join(",");
+      }
+
       const el = document.createElement("input");
       el.type = "text";
       el.id = id;
       el.className = "field__field";
-      el.placeholder = param.example ?? "path…";
+      el.placeholder =
+        spec.kind === "directory" ? "folder…" : param.example ?? "path…";
       if (cur !== undefined && cur !== null) el.value = String(cur);
       el.addEventListener("input", () => set(el.value === "" ? null : el.value));
       el.addEventListener("focus", focusHelp);
+
       const browse = document.createElement("button");
       browse.type = "button";
       browse.className = "field__browse";
       browse.textContent = "Browse…";
-      browse.title = "Path picker (backend dialog) — type a path in dev mode";
-      browse.addEventListener("click", () => el.focus());
+      browse.title =
+        spec.kind === "directory" ? "Choose a folder" : "Choose a file";
+      browse.addEventListener("click", async () => {
+        focusHelp();
+        try {
+          const picked = await pickPath(spec, {
+            title: `Select ${param.ui.label}`,
+            defaultPath: el.value || undefined,
+          });
+          if (picked && picked.length > 0) {
+            const value = spec.multiple ? picked.join(", ") : picked[0];
+            el.value = value;
+            set(value);
+          }
+        } catch {
+          // Dialog unavailable (e.g. plain browser) — leave the field for typing.
+          el.focus();
+        }
+      });
       row.append(el, browse);
       input = row;
       break;

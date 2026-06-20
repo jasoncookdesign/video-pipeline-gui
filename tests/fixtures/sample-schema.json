@@ -125,7 +125,10 @@
           },
           "flag": "--root",
           "hint": "Parent folder for projects.",
-          "help": "Where the project folder is created. Defaults to ~/Video/Projects."
+          "help": "Where the project folder is created. Defaults to ~/Video/Projects.",
+          "path": {
+            "kind": "directory"
+          }
         },
         {
           "key": "no_trim_filler",
@@ -178,7 +181,16 @@
           "required": true,
           "hint": "Template PNG with the danger region marked.",
           "help": "The design template image. The marked region becomes the danger polygon (notch-aware).",
-          "example": "template.png"
+          "example": "template.png",
+          "path": {
+            "kind": "file",
+            "extensions": [
+              "png",
+              "jpg",
+              "jpeg",
+              "webp"
+            ]
+          }
         },
         {
           "key": "profile",
