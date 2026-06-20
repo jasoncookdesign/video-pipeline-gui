@@ -39,11 +39,14 @@ export async function resolveArgv(
   return assembleArgv(schema, { taskId: task.id, formValues, artifactPaths });
 }
 
-/** Render an argv as a single shell-ish copyable line (light quoting). */
+/** Quote a single argv token for display/copy (light shell-ish quoting). */
+export function quoteToken(a: string): string {
+  return /[\s"'$]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a;
+}
+
+/** Render an argv as a single shell-ish copyable line. */
 export function argvToString(argv: string[]): string {
-  return argv
-    .map((a) => (/[\s"'$]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a))
-    .join(" ");
+  return argv.map(quoteToken).join(" ");
 }
 
 export interface CommandPreview {
@@ -69,6 +72,10 @@ export function mountCommandPreview(
   const copyBtn = host.querySelector<HTMLButtonElement>(".cmd-preview__copy")!;
 
   let lastText = "";
+  let prevTokens: string[] | null = null; // for change highlighting (null = no diff)
+  let prevTaskId: string | null = null;
+
+  copyBtn.disabled = true;
   copyBtn.addEventListener("click", () => {
     if (!lastText) return;
     void navigator.clipboard?.writeText(lastText).then(
@@ -82,13 +89,48 @@ export function mountCommandPreview(
     );
   });
 
+  // Plain-English placeholder — the command isn't runnable yet; copy is disabled.
+  function showHint(text: string): void {
+    codeEl.classList.add("cmd-preview__code--hint");
+    codeEl.textContent = text;
+    prevTokens = null;
+    lastText = "";
+    copyBtn.disabled = true;
+  }
+
+  // Render the argv as per-token elements; tokens that changed since the last
+  // render of THIS task flash (the diff is suppressed across task switches).
+  function showCommand(argv: string[]): void {
+    codeEl.classList.remove("cmd-preview__code--hint");
+    const tokens = argv.map(quoteToken);
+    lastText = tokens.join(" ");
+    const prev = prevTokens;
+    codeEl.replaceChildren(
+      ...tokens.map((tok, i) => {
+        const span = document.createElement("span");
+        span.className = "cmd-tok";
+        span.textContent = tok;
+        if (prev && (i >= prev.length || prev[i] !== tok)) {
+          span.classList.add("cmd-tok--changed");
+        }
+        return span;
+      }),
+    );
+    prevTokens = tokens;
+    copyBtn.disabled = false;
+  }
+
   return {
     async update(task: Task | null): Promise<void> {
       if (!task) {
-        codeEl.textContent = "Select a step to see the command it runs.";
-        codeEl.classList.add("cmd-preview__code--hint");
-        lastText = "";
+        prevTaskId = null;
+        showHint("Select a step to see the command it runs.");
         return;
+      }
+      // A new task is a fresh command — don't flash the whole thing as "changed".
+      if (task.id !== prevTaskId) {
+        prevTokens = null;
+        prevTaskId = task.id;
       }
       const root = store.activeProjectRoot();
       try {
@@ -98,15 +140,13 @@ export function mountCommandPreview(
           store.session().formValues,
           root,
         );
-        lastText = argvToString(argv);
-        codeEl.textContent = lastText;
-        codeEl.classList.remove("cmd-preview__code--hint");
+        showCommand(argv);
       } catch (err) {
-        codeEl.textContent = /required/i.test(String(err))
-          ? "Fill in the required fields (marked *) to build the command."
-          : "Complete the form to see the command that will run.";
-        codeEl.classList.add("cmd-preview__code--hint");
-        lastText = "";
+        showHint(
+          /required/i.test(String(err))
+            ? "Fill in the required fields (marked *) to build the command."
+            : "Complete the form to see the command that will run.",
+        );
       }
     },
   };
