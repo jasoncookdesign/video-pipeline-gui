@@ -1,0 +1,11 @@
+# Test dependencies for the contract test (fixture-only mode).
+#   python3 -m venv .venv && ./.venv/bin/pip install -r requirements-test.txt
+#
+# This covers `python3 tests/contract_test.py` validating the committed fixture.
+#
+# The LIVE-EMIT path (diff-checking against a real pipeline emit) additionally
+# needs the sibling video-pipeline package and ITS runtime deps importable. Do
+# not pin those here — install the pipeline itself so its declared deps come with
+# it and don't drift out from under this file:
+#   ./.venv/bin/pip install -e ../video-pipeline
+jsonschema>=4.21,<5
