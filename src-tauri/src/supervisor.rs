@@ -73,6 +73,12 @@ impl Cancellation {
     async fn is_cancelled(&self, task_id: &str) -> bool {
         self.cancelled.lock().await.contains(task_id)
     }
+    /// Clear all cancellation flags. The registry is shared across runs, so each
+    /// run must start clean — otherwise a task cancelled last run is killed on
+    /// sight this run ("cancelled" before it even starts).
+    pub async fn reset(&self) {
+        self.cancelled.lock().await.clear();
+    }
 }
 
 pub struct RunConfig {
@@ -190,6 +196,10 @@ pub async fn run_plan(
     emitter: Arc<dyn Emitter>,
     cancel: Arc<Cancellation>,
 ) -> HashMap<String, TaskState> {
+    // Start clean: drop any cancellation flags left over from a previous run, or
+    // those tasks would be killed on sight ("cancelled") this run.
+    cancel.reset().await;
+
     let mut states: HashMap<String, TaskState> = HashMap::new();
     for id in plan.scheduled() {
         emitter.status(StatusEvent {
