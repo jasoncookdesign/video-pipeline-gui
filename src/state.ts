@@ -72,6 +72,22 @@ class StateStore {
     this.notify();
   }
 
+  /** Reset just the configuration (form values) — keeps theme, panels, pipeline,
+   *  window. Used by "New project". */
+  resetConfig(): void {
+    this.state.session.formValues = {};
+    this.scheduleFlush();
+    this.notify();
+  }
+
+  /** Replace the whole form-value map — used by "Open project" to restore a
+   *  project's saved configuration. */
+  replaceFormValues(values: Record<string, unknown>): void {
+    this.state.session.formValues = { ...values };
+    this.scheduleFlush();
+    this.notify();
+  }
+
   getTheme(): Theme {
     return this.state.session.theme ?? "dark";
   }

@@ -21,6 +21,8 @@ export interface FormHooks {
   /** Soft validation: a warning to show under the given param, or null. Used to
    *  flag a downstream value that conflicts with an earlier stage. */
   conflict?: (paramKey: string) => string | null;
+  /** Render every control disabled (a Completed task shows the values it used). */
+  readOnly?: boolean;
 }
 
 /** Decide the concrete control: ui.control overrides; else derive from type. */
@@ -534,6 +536,16 @@ export function renderForm(
 
   host.appendChild(root);
   refreshAll(); // initial depends_on pass
+
+  // Completed task: show the values it used, disabled (Edit task re-enables it).
+  if (hooks.readOnly) {
+    root.classList.add("form--readonly");
+    root
+      .querySelectorAll<HTMLInputElement>("input, select, textarea")
+      .forEach((el) => {
+        el.disabled = true;
+      });
+  }
 
   // Seed the help panel with the task's own help if present.
   if (task.help) {

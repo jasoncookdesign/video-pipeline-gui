@@ -257,6 +257,32 @@ code, .mono { font-family: var(--mono); }
   font-size: 12px; line-height: 1; flex: 0 0 auto;
 }
 
+/* ---------- iterative editing: project header, completed/reused, edit-task --- */
+.left__head {
+  display: flex; gap: 6px; padding: 8px 10px;
+  border-bottom: 1px solid var(--border); flex: 0 0 auto;
+}
+.left__head .btn { flex: 1 1 auto; font-size: 11px; padding: 4px 6px; }
+
+/* completed task: a checkmark replaces the enable checkbox */
+.tree__check {
+  display: none; color: var(--ok); font-weight: 700;
+  width: 13px; text-align: center; flex: 0 0 auto; font-size: 12px;
+}
+.tree__task[data-completed="true"] .tree__check { display: inline-block; }
+.tree__task[data-completed="true"] .tree__toggle { display: none; }
+/* reused-on-run (up-to-date, skipped) reads as done-but-muted */
+.tree__task[data-state="Reused"] .tree__tasklabel { color: var(--text-dim); }
+
+/* the disabled config view + its Edit-task affordance */
+.form--readonly .form__group { opacity: 0.9; }
+.form__editbox {
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+}
+.form__editnote {
+  margin: 8px 0 0; font-size: 11px; color: var(--text-dim); line-height: 1.45;
+}
+
 /* ---------- center stack ---------- */
 /* Rows: form (flex) · resolved command (docked, auto) · resize handle · run
    output (--log-h, collapsible). The explicit single column with a 0 minimum

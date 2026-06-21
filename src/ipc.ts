@@ -34,6 +34,8 @@ export interface RunPlanArgs {
   cap: number;
   /** Explicit pipeline program to invoke (else the schema entrypoint on PATH). */
   pipelineCmd?: string;
+  /** Tasks to force-run even if up-to-date (the Edit-task set). */
+  force?: string[];
 }
 
 export interface Ipc {
@@ -44,6 +46,11 @@ export interface Ipc {
   cancelTask(taskId: string): Promise<void>;
   pathExists(path: string): Promise<boolean>;
   listPresentArtifacts(projectRoot: string): Promise<string[]>;
+  /** Tasks whose outputs are up-to-date (Completed) for this project root. */
+  upToDateTasks(projectRoot: string): Promise<string[]>;
+  /** Per-project sidecar: the form values + enabled set that produced its artifacts. */
+  writeProjectState(projectRoot: string, state: string): Promise<void>;
+  readProjectState(projectRoot: string): Promise<string | null>;
   readState(): Promise<AppState | null>;
   writeState(state: AppState): Promise<void>;
   listen<T>(event: IpcEvent, handler: (payload: T) => void): Promise<UnlistenFn>;
@@ -263,6 +270,7 @@ class TauriIpc implements Ipc {
       projectRoot: args.projectRoot,
       cap: args.cap,
       pipelineCmd: args.pipelineCmd,
+      force: args.force ?? [],
     });
   }
 
@@ -279,6 +287,21 @@ class TauriIpc implements Ipc {
   async listPresentArtifacts(projectRoot: string): Promise<string[]> {
     const { invoke } = await this.core();
     return await invoke<string[]>("list_present_artifacts", { projectRoot });
+  }
+
+  async upToDateTasks(projectRoot: string): Promise<string[]> {
+    const { invoke } = await this.core();
+    return await invoke<string[]>("up_to_date_tasks", { projectRoot });
+  }
+
+  async writeProjectState(projectRoot: string, state: string): Promise<void> {
+    const { invoke } = await this.core();
+    await invoke("write_project_state", { projectRoot, state });
+  }
+
+  async readProjectState(projectRoot: string): Promise<string | null> {
+    const { invoke } = await this.core();
+    return await invoke<string | null>("read_project_state", { projectRoot });
   }
 
   async readState(): Promise<AppState | null> {
@@ -446,6 +469,19 @@ class MockIpc implements Ipc {
   async listPresentArtifacts(_projectRoot: string): Promise<string[]> {
     // Pretend the base video and caption overlay exist on disk.
     return ["base", "caption"];
+  }
+
+  async upToDateTasks(_projectRoot: string): Promise<string[]> {
+    // Mock: pretend the upstream layers are already up-to-date.
+    return ["project.init", "reframe"];
+  }
+
+  async writeProjectState(_projectRoot: string, _state: string): Promise<void> {
+    /* mock: project-folder persistence is a no-op in the browser */
+  }
+
+  async readProjectState(_projectRoot: string): Promise<string | null> {
+    return null;
   }
 
   async readState(): Promise<AppState | null> {

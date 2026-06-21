@@ -56,6 +56,12 @@
         <!-- LEFT: step/task tree (content-width, always shown). The Output/
              Packaging step + its export tasks render here like any other step. -->
         <aside id="left" class="pane">
+          <div class="left__head">
+            <button id="new-project" type="button" class="btn btn--ghost"
+                    title="Start fresh: reset all settings to defaults (keeps your UI preferences)">New project</button>
+            <button id="open-project" type="button" class="btn btn--ghost"
+                    title="Open an existing project folder and pick up where it left off">Open project</button>
+          </div>
           <div id="step-tree" class="pane__scroll"></div>
         </aside>
 

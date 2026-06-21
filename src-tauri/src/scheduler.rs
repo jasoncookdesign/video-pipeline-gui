@@ -36,6 +36,8 @@ pub enum TaskState {
     Failed,
     Blocked,
     Skipped,
+    /// Outputs already existed on disk and the task wasn't forced — reused, not run.
+    Reused,
 }
 
 /// A resolved consume: which task (if any) supplies the channel this task reads.

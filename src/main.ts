@@ -55,6 +55,12 @@ async function boot(): Promise<void> {
     if (!t.optional) enabled.add(t.id);
   }
 
+  // Completed = the task's output is up-to-date on disk (shown with a checkmark,
+  // config disabled). Reopened = the user clicked "Edit task" — those re-run on the
+  // next batch (the force set) and drop out of completed.
+  const completed = new Set<string>();
+  const reopened = new Set<string>();
+
   // ---- help panel (driven by form focus) ----
   const helpHost = $("#help-body");
   const help: HelpPanel = {
@@ -232,12 +238,98 @@ async function boot(): Promise<void> {
       .querySelector(`.tree__task[data-task="${CSS.escape(task.id)}"]`)
       ?.classList.add("tree__task--active");
 
+    const isCompleted = completed.has(task.id);
     renderForm($("#form-host"), task, {
       onChange: onFormChange,
       help,
       conflict: (k) => conflictMessage(task.id, k),
+      readOnly: isCompleted,
     });
+    if (isCompleted) appendEditTask($("#form-host"), task);
     refreshCommand();
+  }
+
+  // The "Edit task" affordance shown under a completed task's (disabled) form.
+  function appendEditTask(host: HTMLElement, task: Task): void {
+    const box = document.createElement("div");
+    box.className = "form__editbox";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn--ghost form__edit";
+    btn.textContent = "Edit task";
+    btn.addEventListener("click", () => editTask(task));
+    const note = document.createElement("p");
+    note.className = "form__editnote";
+    const n = downstreamTaskIds(task.id).filter((d) => completed.has(d)).length;
+    note.textContent =
+      n > 0
+        ? `Editing this reopens ${n} completed downstream task${n === 1 ? "" : "s"} too, so your change flows through on the next run.`
+        : "This will re-run this task on the next run; upstream completed tasks are reused.";
+    box.append(btn, note);
+    host.appendChild(box);
+  }
+
+  // Reopen a completed task + its completed downstream dependents for editing;
+  // they leave the completed set and join the force set (re-run next batch).
+  function editTask(task: Task): void {
+    reopened.add(task.id);
+    completed.delete(task.id);
+    for (const d of downstreamTaskIds(task.id)) {
+      if (completed.has(d)) {
+        completed.delete(d);
+        reopened.add(d);
+      }
+    }
+    applyCompleted();
+    selectTask(task); // re-render now-editable
+  }
+
+  // Tasks transitively downstream of `taskId` (consumers of what it/they produce).
+  function downstreamTaskIds(taskId: string): string[] {
+    const out = new Set<string>();
+    const queue = [taskId];
+    while (queue.length) {
+      const cur = queue.shift()!;
+      const curTask = schema.tasks.find((t) => t.id === cur);
+      if (!curTask) continue;
+      for (const ch of curTask.produces) {
+        for (const t of schema.tasks) {
+          if (t.id !== cur && t.consumes.includes(ch) && !out.has(t.id)) {
+            out.add(t.id);
+            queue.push(t.id);
+          }
+        }
+      }
+    }
+    return [...out];
+  }
+
+  // Reflect the completed set onto the tree rows (checkmark + disabled-config cue).
+  function applyCompleted(): void {
+    for (const t of schema.tasks) {
+      const row = tree.querySelector<HTMLElement>(
+        `.tree__task[data-task="${CSS.escape(t.id)}"]`,
+      );
+      if (row) row.dataset.completed = completed.has(t.id) ? "true" : "";
+    }
+  }
+
+  // Ask the backend which tasks are up-to-date for the current project, minus any
+  // the user has reopened, and reflect it on the tree + the open form.
+  async function refreshCompleted(): Promise<void> {
+    const root = store.projectRoot();
+    let utd: string[] = [];
+    if (root) {
+      try {
+        utd = await ipc.upToDateTasks(root);
+      } catch {
+        utd = [];
+      }
+    }
+    completed.clear();
+    for (const id of utd) if (!reopened.has(id)) completed.add(id);
+    applyCompleted();
+    if (selectedTask) selectTask(selectedTask);
   }
 
   function buildTree(): void {
@@ -279,6 +371,13 @@ async function boot(): Promise<void> {
           refreshPlan();
         });
 
+        // Completed marker: a checkmark shown (via CSS) in place of the checkbox
+        // when the task's output is up-to-date.
+        const check = document.createElement("span");
+        check.className = "tree__check";
+        check.textContent = "✓";
+        check.title = "Completed — output is up-to-date";
+
         const label = document.createElement("button");
         label.type = "button";
         label.className = "tree__tasklabel";
@@ -286,7 +385,7 @@ async function boot(): Promise<void> {
         if (task.hint) label.title = task.hint;
         label.addEventListener("click", () => selectTask(task));
 
-        row.append(toggle, label);
+        row.append(toggle, check, label);
         group.appendChild(row);
       }
       tree.appendChild(group);
@@ -311,6 +410,8 @@ async function boot(): Promise<void> {
   // conflicts with the project's. Surface it on the tree now, without waiting for
   // the user to open that step or change a value.
   refreshConflicts();
+  // Reflect any already-produced (Completed) steps for the restored project.
+  void refreshCompleted();
 
   // The project lives at <Projects root>/<Project name> (project-init creates it
   // there). Artifact paths + the run's working dir resolve against this. Single
@@ -354,7 +455,11 @@ async function boot(): Promise<void> {
     // the run is over (covers failures/blocks, which `done==total` would miss).
     if (p.state !== "Running") {
       pendingTasks.delete(p.taskId);
-      if (running && pendingTasks.size === 0) setRunning(false);
+      if (running && pendingTasks.size === 0) {
+        setRunning(false);
+        reopened.clear(); // edits have been applied; recompute completion
+        void refreshCompleted();
+      }
     }
   });
   await ipc.listen<PlanProgressEvent>("plan-progress", (p) => {
@@ -421,6 +526,17 @@ async function boot(): Promise<void> {
       }
 
       void store.flush();
+      // Persist the configuration into the project folder so reopening it later
+      // restores the values that produced its artifacts.
+      if (root !== "<project-root>") {
+        void ipc.writeProjectState(
+          root,
+          JSON.stringify({
+            formValues: store.session().formValues,
+            enabled: [...enabled],
+          }),
+        );
+      }
       try {
         const runId = await ipc.runPlan({
           enabled: [...enabled],
@@ -428,6 +544,7 @@ async function boot(): Promise<void> {
           projectRoot: root,
           cap,
           pipelineCmd: store.getPipelinePath(),
+          force: [...reopened],
         });
         $("#run-progress").textContent = `run ${runId}`;
         // Wait on every enabled task; each emits a terminal status when done.
@@ -486,6 +603,84 @@ async function boot(): Promise<void> {
       if (!ok) return;
       await store.reset();
       location.reload();
+    })();
+  });
+
+  // Rebuild the tree + center/preview after the config changes wholesale
+  // (New/Open project). Keeps UI preferences; only the configuration changes.
+  function reloadProjectView(): void {
+    buildTree();
+    applyCompleted();
+    if (schema.tasks.length > 0) selectTask(schema.tasks[0]);
+    void validateSelection([...enabled]);
+    refreshConflicts();
+    void previewer.refresh(projectRoot());
+  }
+
+  // New project: reset configuration to defaults (UI preferences untouched).
+  $<HTMLButtonElement>("#new-project").addEventListener("click", () => {
+    void (async () => {
+      const ok = await confirmDialog(
+        "Start a new project? This resets all settings to defaults. Your UI preferences (theme, panel sizes, pipeline location) are kept.",
+        "New project",
+      );
+      if (!ok) return;
+      store.resetConfig();
+      enabled.clear();
+      for (const t of schema.tasks) if (!t.optional) enabled.add(t.id);
+      completed.clear();
+      reopened.clear();
+      reloadProjectView();
+    })();
+  });
+
+  // Open project: pick a folder, validate it's a pipeline project, restore its
+  // saved configuration, and reflect which steps are already completed.
+  $<HTMLButtonElement>("#open-project").addEventListener("click", () => {
+    void (async () => {
+      const picked = await pickPath(
+        { kind: "directory" },
+        { title: "Open a project folder" },
+      );
+      if (!picked || picked.length === 0) return;
+      const folder = picked[0];
+      if (!(await ipc.pathExists(`${folder}/project.yml`))) {
+        await confirmDialog(
+          `That folder isn't a video-pipeline project (no project.yml found):\n${folder}`,
+          "Not a project folder",
+        );
+        return;
+      }
+      let restored = false;
+      try {
+        const raw = await ipc.readProjectState(folder);
+        if (raw) {
+          const parsed = JSON.parse(raw) as {
+            formValues?: Record<string, unknown>;
+            enabled?: string[];
+          };
+          if (parsed.formValues) {
+            store.replaceFormValues(parsed.formValues);
+            restored = true;
+          }
+          if (parsed.enabled) {
+            enabled.clear();
+            for (const id of parsed.enabled) enabled.add(id);
+          }
+        }
+      } catch {
+        /* a malformed sidecar shouldn't block opening the folder */
+      }
+      if (!restored) {
+        // No saved config — seed the project root from the folder path.
+        const slash = Math.max(folder.lastIndexOf("/"), folder.lastIndexOf("\\"));
+        store.setFormValue("project.init.root", slash >= 0 ? folder.slice(0, slash) : folder);
+        store.setFormValue("project.init.name", slash >= 0 ? folder.slice(slash + 1) : folder);
+      }
+      reopened.clear();
+      completed.clear();
+      reloadProjectView();
+      await refreshCompleted();
     })();
   });
 
