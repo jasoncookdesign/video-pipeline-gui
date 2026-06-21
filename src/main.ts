@@ -172,6 +172,27 @@ async function boot(): Promise<void> {
     updateRunEnabled();
   };
 
+  // Soft conflict: a downstream shared control (Identity/Profile) whose value
+  // differs from the project's (first-step) value — likely a mistake.
+  const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  function conflictMessage(taskId: string, paramKey: string): string | null {
+    for (const s of sharedProps) {
+      if (s.key !== paramKey) continue;
+      const myKey = `${taskId}.${paramKey}`;
+      if (myKey === s.sourceKey || !s.downstreamKeys.includes(myKey)) continue;
+      const src = store.getFormValue(s.sourceKey);
+      const mine = store.getFormValue(myKey);
+      const has = (v: unknown) => v != null && String(v) !== "";
+      if (has(src) && has(mine) && String(src) !== String(mine)) {
+        return (
+          `Differs from the project ${titleCase(s.key)} ("${String(src)}") set ` +
+          `in Initialize project — may produce unexpected results.`
+        );
+      }
+    }
+    return null;
+  }
+
   // ---- left tree: steps -> tasks with enable toggles ----
   const tree = $("#step-tree");
 
@@ -188,6 +209,7 @@ async function boot(): Promise<void> {
     renderForm($("#form-host"), task, {
       onChange: onFormChange,
       help,
+      conflict: (k) => conflictMessage(task.id, k),
     });
     refreshCommand();
   }

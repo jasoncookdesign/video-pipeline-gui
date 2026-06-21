@@ -296,6 +296,12 @@ code, .mono { font-family: var(--mono); }
 .field[hidden] { display: none; }
 .field__label { color: var(--text); font-size: 12.5px; }
 .field__req { color: var(--err); margin-left: 3px; }
+/* soft validation warning under a field (spans both grid columns) */
+.field__warn {
+  grid-column: 1 / -1; color: var(--warn); font-size: 11px;
+  margin-top: 2px; line-height: 1.4;
+}
+.field__warn[hidden] { display: none; }
 
 /* Any label wired as a help trigger: click shows help, dotted underline on hover
    signals the affordance. Applies to form-field labels and the chrome-control
