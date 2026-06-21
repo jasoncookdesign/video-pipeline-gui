@@ -126,6 +126,14 @@ async function boot(): Promise<void> {
   }
   // Run lifecycle: `running` gates the Run button; `pendingTasks` is the set of
   // enabled tasks we're still waiting on (cleared by terminal task-status events).
+  // Pending/Running are transient; only these end a task.
+  const TERMINAL_STATES = new Set([
+    "Succeeded",
+    "Failed",
+    "Blocked",
+    "Skipped",
+    "Reused",
+  ]);
   let running = false;
   let pendingTasks = new Set<string>();
 
@@ -451,9 +459,11 @@ async function boot(): Promise<void> {
       // A produced artifact may now exist — refresh available preview layers.
       void previewer.refresh(projectRoot());
     }
-    // A terminal state clears the task from the pending set; when the set empties
+    // A *terminal* state clears the task from the pending set; when the set empties
     // the run is over (covers failures/blocks, which `done==total` would miss).
-    if (p.state !== "Running") {
+    // NB: Pending + Running are NOT terminal — the run starts by emitting Pending
+    // for every scheduled task, which must not be mistaken for completion.
+    if (TERMINAL_STATES.has(p.state)) {
       pendingTasks.delete(p.taskId);
       if (running && pendingTasks.size === 0) {
         setRunning(false);
