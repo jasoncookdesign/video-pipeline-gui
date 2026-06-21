@@ -6,7 +6,7 @@
 // keyed "taskId.paramKey" via the store. No assembly logic lives here (that's
 // command.ts); this module only collects values and notifies on change.
 
-import type { Param, Task, ControlKind } from "./types";
+import type { Param, Task, ControlKind, Compose, ComposePart } from "./types";
 import { store } from "./state";
 import { pickPath } from "./dialog";
 import type { HelpPanel } from "./help";
@@ -128,6 +128,94 @@ interface ControlBuild {
   refreshVisibility: () => void;
 }
 
+/**
+ * Build a composed value from labelled sub-fields (SADD §3.4). Each part persists
+ * under "<param>.<part>"; the assembled value (via the template) is the param's
+ * value — set only when every part is filled, so an incomplete value reads as
+ * missing (keeps the run gated). The structure guarantees the result matches the
+ * convention, so the user never has to format the string by hand.
+ */
+function buildComposite(
+  task: Task,
+  param: Param,
+  compose: Compose,
+  notifyChanged: (changedKey?: string) => void,
+): HTMLElement {
+  const container = document.createElement("div");
+  container.className = "compose";
+  const partKey = (p: ComposePart) => `${stateKey(task, param)}.${p.key}`;
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  const partValue = (p: ComposePart): string => {
+    const v = store.getFormValue(partKey(p));
+    if (v !== undefined && v !== null && String(v) !== "") return String(v);
+    if (p.default === "today" && p.control === "date") return today();
+    return p.default != null ? String(p.default) : "";
+  };
+
+  const assemble = (): void => {
+    let allFilled = true;
+    let name = compose.template;
+    for (const p of compose.parts) {
+      const v = partValue(p);
+      if (v === "") allFilled = false;
+      name = name.split(`{${p.key}}`).join(v);
+    }
+    store.setFormValue(stateKey(task, param), allFilled ? name : null);
+    notifyChanged(stateKey(task, param));
+  };
+
+  for (const p of compose.parts) {
+    const cell = document.createElement("label");
+    cell.className = "compose__part";
+    if (p.hint) cell.title = p.hint;
+    const lab = document.createElement("span");
+    lab.className = "compose__label";
+    lab.textContent = p.label;
+
+    let el: HTMLInputElement | HTMLSelectElement;
+    if (p.control === "dropdown") {
+      const sel = document.createElement("select");
+      sel.className = "field__select compose__input";
+      for (const opt of p.options ?? []) {
+        const o = document.createElement("option");
+        o.value = String(opt);
+        o.textContent = String(opt);
+        sel.appendChild(o);
+      }
+      sel.value = partValue(p);
+      sel.addEventListener("change", () => {
+        store.setFormValue(partKey(p), sel.value || null);
+        assemble();
+      });
+      el = sel;
+    } else {
+      const inp = document.createElement("input");
+      inp.type = p.control === "date" ? "date" : "text";
+      inp.className = "field__field compose__input";
+      if (p.placeholder) inp.placeholder = p.placeholder;
+      inp.value = partValue(p);
+      inp.addEventListener("input", () => {
+        store.setFormValue(partKey(p), inp.value === "" ? null : inp.value);
+        assemble();
+      });
+      el = inp;
+    }
+    cell.append(lab, el);
+    container.appendChild(cell);
+  }
+
+  // Persist part defaults (date=today, token default) so they survive a reload.
+  for (const p of compose.parts) {
+    if (store.getFormValue(partKey(p)) == null) {
+      const dv = partValue(p);
+      if (dv) store.setFormValue(partKey(p), dv);
+    }
+  }
+  assemble();
+  return container;
+}
+
 /** Build a single labelled control for a param. */
 function buildControl(
   task: Task,
@@ -170,6 +258,18 @@ function buildControl(
 
   const cur = currentValue(task, param);
   let input: HTMLElement;
+
+  if (param.compose) {
+    input = buildComposite(task, param, param.compose, notifyChanged);
+    input.classList.add("field__input");
+    wrapper.append(label, input);
+    return {
+      wrapper,
+      refreshVisibility: () => {
+        wrapper.hidden = false;
+      },
+    };
+  }
 
   switch (kind) {
     case "toggle": {

@@ -348,6 +348,18 @@ code, .mono { font-family: var(--mono); }
 }
 .field__browse:hover { border-color: var(--accent); }
 
+/* ---------- composed field (date / token / hook → one value) ---------- */
+.compose { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.compose__part { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.compose__label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--text-dim);
+}
+.compose__input { font-size: 12.5px; }
+/* the last part (e.g. the hook) takes the remaining width */
+.compose__part:last-child { flex: 1 1 14ch; }
+.compose__part:last-child .compose__input { width: 100%; }
+
 /* ---------- command preview bar ---------- */
 .cmd-preview {
   display: flex; align-items: flex-start; gap: 10px;

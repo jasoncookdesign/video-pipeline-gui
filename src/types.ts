@@ -37,6 +37,23 @@ export interface PathSpec {
   multiple?: boolean;
 }
 
+/** A labelled sub-field of a composed value. */
+export interface ComposePart {
+  key: string;
+  label: string;
+  control: "field" | "dropdown" | "date";
+  options?: string[];
+  default?: string;
+  hint?: string;
+  placeholder?: string;
+}
+
+/** Build a param value from sub-fields via a `{key}`-template (e.g. project name). */
+export interface Compose {
+  template: string;
+  parts: ComposePart[];
+}
+
 export interface Param {
   key: string;
   type: ParamType;
@@ -53,6 +70,7 @@ export interface Param {
   hint?: string;
   help?: string;
   example?: string;
+  compose?: Compose;
   path?: PathSpec;
   ui: UiSpec;
 }

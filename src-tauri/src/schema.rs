@@ -74,6 +74,29 @@ fn default_path_kind() -> String {
     "file".to_string()
 }
 
+/// A labelled sub-field of a composed value (e.g. project name parts). Round-trips
+/// through the gateway; the Rust core doesn't otherwise use it (frontend concern).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComposePart {
+    pub key: String,
+    pub label: String,
+    pub control: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub options: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default: Option<String>,
+    #[serde(default)]
+    pub hint: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub placeholder: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Compose {
+    pub template: String,
+    pub parts: Vec<ComposePart>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Param {
     pub key: String,
@@ -104,6 +127,8 @@ pub struct Param {
     pub help: String,
     #[serde(default)]
     pub example: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compose: Option<Compose>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub path: Option<PathSpec>,
 }
