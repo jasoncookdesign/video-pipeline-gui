@@ -273,8 +273,8 @@ def _topo_levels(enabled, edges, indeg):
 
 ALL = [
     "project.init", "safezone.gen", "reframe", "roughcut",
-    "roughcut.render", "caption.define", "caption.render", "safezone.qc",
-    "composite",
+    "roughcut.render", "caption.define", "caption.render", "caption.preview",
+    "safezone.qc", "composite",
 ]
 
 
@@ -326,7 +326,7 @@ def check_scheduler(schema):
     plan = build_plan(s, set(ALL))
     blocked = plan.cascade_blocked({"reframe"})
     for t in ["roughcut", "roughcut.render", "caption.define", "caption.render",
-              "safezone.qc", "composite"]:
+              "caption.preview", "safezone.qc", "composite"]:
         assert t in blocked, t
     assert "safezone.gen" not in blocked and "project.init" not in blocked
 

@@ -860,6 +860,77 @@
       "help": "Rebuilds props from the (possibly hand-edited) caption file + style/safe-zone config and renders the transparent caption overlay via Remotion (daily driver). This is the previewable caption layer the NLE stacks on top."
     },
     {
+      "id": "caption.preview",
+      "step": "caption",
+      "label": "Build caption preview",
+      "subcommand": "proxy",
+      "optional": true,
+      "consumes": [
+        "caption"
+      ],
+      "produces": [
+        "caption.preview"
+      ],
+      "io": [
+        {
+          "artifact": "caption",
+          "role": "input",
+          "via": "positional",
+          "order": 0
+        },
+        {
+          "artifact": "caption.preview",
+          "role": "output",
+          "via": "flag",
+          "flag": "-o"
+        }
+      ],
+      "params": [
+        {
+          "key": "profile",
+          "type": "enum",
+          "arity": "value",
+          "control": "dropdown",
+          "ui": {
+            "label": "Profile",
+            "control": "dropdown",
+            "group": "Output"
+          },
+          "flag": "--profile",
+          "default": "reels-9x16",
+          "options": [
+            "reels-9x16",
+            "story-9x16",
+            "feed-portrait-4x5",
+            "feed-square-1x1",
+            "feed-landscape-16x9"
+          ],
+          "hint": "Output aspect/dimensions preset.",
+          "help": "The target frame. reels-9x16 (1080x1920) is the default for vertical Reels; the feed-* presets cover 4:5, 1:1, and 16:9. Drives crop math and safe-zone derivation.",
+          "example": "--profile reels-9x16"
+        },
+        {
+          "key": "square",
+          "type": "number",
+          "arity": "value",
+          "control": "slider",
+          "ui": {
+            "label": "Checker size",
+            "control": "slider",
+            "group": "Preview"
+          },
+          "flag": "--square",
+          "default": 16,
+          "min": 4,
+          "max": 64,
+          "step": 4,
+          "hint": "Checkerboard cell size (px)."
+        }
+      ],
+      "hint": "Checkerboard-baked preview of the caption layer.",
+      "help": "Renders the transparent caption overlay over a neutral checkerboard into plain h264 so the previewer can play it in isolation. Optional — enable it only when you want to preview the caption layer in the app."
+    },
+    {
       "id": "safezone.qc",
       "step": "qc",
       "label": "Safe-zone QC",
@@ -1060,11 +1131,21 @@
       "id": "caption",
       "kind": "layer",
       "path": "layers/captions.mov",
-      "previewable": true,
+      "previewable": false,
       "z_order": 30,
       "codec_hint": "hevc-alpha",
       "hint": "Styled caption overlay (transparent).",
-      "help": "The rendered caption layer the NLE stacks on top. Transparent HEVC-alpha — the one previewer alpha case (see the WKWebView spike)."
+      "help": "The rendered caption layer the NLE stacks on top. Transparent HEVC-alpha — not previewed directly (the webview can't be relied on to decode alpha); the caption.preview proxy is its previewable form."
+    },
+    {
+      "id": "caption.preview",
+      "kind": "media",
+      "path": "layers/captions.preview.mp4",
+      "previewable": true,
+      "z_order": 30,
+      "codec_hint": "h264",
+      "hint": "Caption layer over a checkerboard (preview).",
+      "help": "The caption overlay baked over a neutral checkerboard into plain h264 so the previewer can play it in isolation. A GUI-only proxy — never bundled into an editor export."
     },
     {
       "id": "qc.report",
