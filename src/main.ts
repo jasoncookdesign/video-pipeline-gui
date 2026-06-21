@@ -547,6 +547,12 @@ async function boot(): Promise<void> {
           }),
         );
       }
+      // Mark running BEFORE awaiting the run: a fast run (e.g. every task reused)
+      // can emit its terminal task-status events before this continuation resumes,
+      // and they must find a populated pending set — otherwise it never empties and
+      // the button stays stuck on "Running". Revert if the run fails to start.
+      pendingTasks = new Set([...enabled]);
+      setRunning(true);
       try {
         const runId = await ipc.runPlan({
           enabled: [...enabled],
@@ -557,11 +563,9 @@ async function boot(): Promise<void> {
           force: [...reopened],
         });
         $("#run-progress").textContent = `run ${runId}`;
-        // Wait on every enabled task; each emits a terminal status when done.
-        pendingTasks = new Set([...enabled]);
-        setRunning(true);
       } catch (err) {
         $("#run-progress").textContent = `error: ${String(err)}`;
+        setRunning(false);
       }
     })();
   });
