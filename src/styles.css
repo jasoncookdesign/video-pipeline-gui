@@ -141,6 +141,8 @@ code, .mono { font-family: var(--mono); }
 .btn--ghost { background: transparent; }
 .btn--icon { padding: 5px 8px; display: inline-flex; align-items: center; }
 .btn--icon svg { width: 15px; height: 15px; display: block; }
+/* draws the eye to a required setup action (e.g. Set pipeline before a run) */
+.btn--attention { border-color: var(--accent); color: var(--accent); }
 
 /* ---------- main grid (three panes + a resize handle) ---------- */
 /* LEFT sizes to its content (capped) and is always shown. CENTER flexes. A thin

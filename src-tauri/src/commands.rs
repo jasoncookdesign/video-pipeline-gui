@@ -123,6 +123,11 @@ pub async fn resolve_argv(
 }
 
 #[tauri::command]
+pub fn path_exists(path: String) -> bool {
+    !path.is_empty() && std::path::Path::new(&path).exists()
+}
+
+#[tauri::command]
 pub async fn build_plan(ctx: State<'_, AppCtx>, enabled: Vec<String>) -> Result<Plan, String> {
     let s = current_schema(&ctx).await?;
     let set = enabled.into_iter().collect();

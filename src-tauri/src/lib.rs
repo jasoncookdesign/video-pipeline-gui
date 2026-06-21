@@ -34,6 +34,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::load_schema,
             commands::set_schema_path,
+            commands::path_exists,
             commands::resolve_argv,
             commands::build_plan,
             commands::run_plan,

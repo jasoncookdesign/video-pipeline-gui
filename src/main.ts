@@ -22,7 +22,7 @@ import { mountCommandPreview } from "./command";
 import { mountLog } from "./log";
 import { mountPreviewer } from "./previewer";
 import { setupDragDrop } from "./dnd";
-import { confirmDialog, pickPath } from "./dialog";
+import { confirmDialog, pickPath, tauriAvailable } from "./dialog";
 import { bindLabelHelp, helpMarkup, type HelpPanel } from "./help";
 import { makeSplitter } from "./splitter";
 
@@ -119,7 +119,10 @@ async function boot(): Promise<void> {
     return true;
   }
   function updateRunEnabled(): void {
-    const ok = lastPlanValid && requiredInputsSatisfied([...enabled]);
+    // A real run also needs the pipeline executable set (in the Tauri app).
+    const pipelineOk = !tauriAvailable() || !!store.getPipelinePath();
+    const ok =
+      lastPlanValid && requiredInputsSatisfied([...enabled]) && pipelineOk;
     $<HTMLButtonElement>("#run-btn").disabled = !ok;
   }
 
@@ -329,24 +332,45 @@ async function boot(): Promise<void> {
   const cancelBtn = $<HTMLButtonElement>("#cancel-btn");
 
   runBtn.addEventListener("click", () => {
-    const cap = Math.max(1, Number(capInput.value) || 1);
-    const root = projectRoot() ?? "<project-root>";
-    void store.flush();
-    void ipc
-      .runPlan({
-        enabled: [...enabled],
-        formValues: store.session().formValues,
-        projectRoot: root,
-        cap,
-        pipelineCmd: store.getPipelinePath(),
-      })
-      .then((runId) => {
+    void (async () => {
+      const cap = Math.max(1, Number(capInput.value) || 1);
+      const root = projectRoot() ?? "<project-root>";
+
+      // Overwrite confirmation: re-running creates project-init over an existing
+      // folder, which refreshes the project and overwrites the enabled steps'
+      // outputs. Confirm first.
+      if (enabled.has("project.init") && root !== "<project-root>") {
+        let exists = false;
+        try {
+          exists = await ipc.pathExists(root);
+        } catch {
+          exists = false;
+        }
+        if (exists) {
+          const ok = await confirmDialog(
+            `A project already exists at:\n${root}\n\nRunning will overwrite the ` +
+              `outputs of the enabled steps. Continue?`,
+            "Overwrite project?",
+          );
+          if (!ok) return;
+        }
+      }
+
+      void store.flush();
+      try {
+        const runId = await ipc.runPlan({
+          enabled: [...enabled],
+          formValues: store.session().formValues,
+          projectRoot: root,
+          cap,
+          pipelineCmd: store.getPipelinePath(),
+        });
         $("#run-progress").textContent = `run ${runId}`;
         cancelBtn.disabled = false;
-      })
-      .catch((err) => {
+      } catch (err) {
         $("#run-progress").textContent = `error: ${String(err)}`;
-      });
+      }
+    })();
   });
 
   cancelBtn.addEventListener("click", () => {
@@ -360,10 +384,11 @@ async function boot(): Promise<void> {
   const pipelineBtn = $<HTMLButtonElement>("#pipeline-btn");
   const reflectPipeline = () => {
     const p = store.getPipelinePath();
-    pipelineBtn.textContent = p ? "Pipeline ✓" : "Pipeline…";
+    pipelineBtn.textContent = p ? "Change pipeline" : "Set pipeline";
+    pipelineBtn.classList.toggle("btn--attention", !p); // draw the eye when unset
     pipelineBtn.title = p
       ? `Pipeline executable:\n${p}\n\nClick to change.`
-      : "Set the video-pipeline executable to run (so the app finds it regardless of how it was launched)";
+      : "Set the video-pipeline executable to run (required before a run).";
   };
   reflectPipeline();
   pipelineBtn.addEventListener("click", () => {
@@ -379,6 +404,7 @@ async function boot(): Promise<void> {
         store.setPipelinePath(picked[0]);
         await store.flush();
         reflectPipeline();
+        updateRunEnabled();
       }
     })();
   });

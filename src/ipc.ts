@@ -42,6 +42,7 @@ export interface Ipc {
   buildPlan(enabled: string[]): Promise<Plan>;
   runPlan(args: RunPlanArgs): Promise<string>;
   cancelTask(taskId: string): Promise<void>;
+  pathExists(path: string): Promise<boolean>;
   listPresentArtifacts(projectRoot: string): Promise<string[]>;
   readState(): Promise<AppState | null>;
   writeState(state: AppState): Promise<void>;
@@ -270,6 +271,11 @@ class TauriIpc implements Ipc {
     await invoke("cancel_task", { taskId });
   }
 
+  async pathExists(path: string): Promise<boolean> {
+    const { invoke } = await this.core();
+    return await invoke<boolean>("path_exists", { path });
+  }
+
   async listPresentArtifacts(projectRoot: string): Promise<string[]> {
     const { invoke } = await this.core();
     return await invoke<string[]>("list_present_artifacts", { projectRoot });
@@ -431,6 +437,10 @@ class MockIpc implements Ipc {
 
   async cancelTask(taskId: string): Promise<void> {
     this.cancelled.add(taskId);
+  }
+
+  async pathExists(_path: string): Promise<boolean> {
+    return false; // browser dev has no filesystem
   }
 
   async listPresentArtifacts(_projectRoot: string): Promise<string[]> {

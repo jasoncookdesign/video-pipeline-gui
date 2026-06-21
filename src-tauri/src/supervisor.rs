@@ -282,10 +282,15 @@ async fn run_one(
     let mut child = match cmd.spawn() {
         Ok(c) => c,
         Err(e) => {
+            let hint = if e.kind() == std::io::ErrorKind::NotFound && pipeline_cmd.is_none() {
+                " — set the pipeline executable with \"Set pipeline\", or put video-pipeline on PATH"
+            } else {
+                ""
+            };
             emitter.log(LogLine {
                 task_id: task_id.into(),
                 stream: "stderr".into(),
-                line: format!("spawn failed: {e} (program: {program})"),
+                line: format!("spawn failed: {e} (program: {program}){hint}"),
             });
             set_state(states, task_id, TaskState::Failed, emitter).await;
             return false;
