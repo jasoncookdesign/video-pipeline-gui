@@ -53,6 +53,14 @@
       "optional": true,
       "hint": "Check captions/faces against the danger zone.",
       "help": "Advisory check: flags protected elements intruding on the danger polygon and captions over the speaker's face. Advises, never blocks."
+    },
+    {
+      "id": "composite",
+      "label": "Composite",
+      "order": 70,
+      "optional": true,
+      "hint": "Flatten the layers into one preview render.",
+      "help": "Stacks the base and the caption/overlay layers into a single previewable video — the in-app preview of the assembled result and the guide track the editor handoffs carry on top. A review/handoff intermediate, not the final cut (that is yours, from your NLE)."
     }
   ],
   "tasks": [
@@ -934,6 +942,76 @@
       ],
       "hint": "Advisory: flag danger-zone intrusions + captions over faces.",
       "help": "Checks protected elements against the danger polygon (notch-aware) and captions over the speaker's face. Advisory only — it warns at the export/composite control but never blocks (SADD §4.2). --strict makes it exit non-zero for CI gating."
+    },
+    {
+      "id": "composite",
+      "step": "composite",
+      "label": "Composite layers",
+      "subcommand": "composite",
+      "optional": true,
+      "consumes": [
+        "base",
+        "caption"
+      ],
+      "produces": [
+        "composite"
+      ],
+      "io": [
+        {
+          "artifact": "base",
+          "role": "input",
+          "via": "positional",
+          "order": 0
+        },
+        {
+          "artifact": "caption",
+          "role": "input",
+          "via": "flag",
+          "flag": "--layer"
+        },
+        {
+          "artifact": "composite",
+          "role": "output",
+          "via": "flag",
+          "flag": "-o"
+        }
+      ],
+      "params": [
+        {
+          "key": "crf",
+          "type": "number",
+          "arity": "value",
+          "control": "slider",
+          "ui": {
+            "label": "Quality (CRF)",
+            "control": "slider",
+            "group": "Render"
+          },
+          "flag": "--crf",
+          "default": 18,
+          "min": 0,
+          "max": 51,
+          "step": 1,
+          "hint": "x264 quality (lower = better).",
+          "help": "Quality of the composite render; 18 is near-visually-lossless. This is a preview/handoff render, not your final master."
+        },
+        {
+          "key": "dry_run",
+          "type": "bool",
+          "arity": "switch",
+          "control": "toggle",
+          "ui": {
+            "label": "Dry run",
+            "control": "toggle",
+            "group": "Render"
+          },
+          "flag": "--dry-run",
+          "default": false,
+          "hint": "Show the ffmpeg command without rendering."
+        }
+      ],
+      "hint": "Flatten base + overlay layers into review/composite.mp4.",
+      "help": "Stacks the layers bottom-to-top by z-order (base, then the caption overlay + any future overlays) into one previewable .mp4 — the in-app preview of the assembled result and the guide track the editor handoffs carry on top. QC advises but never blocks it. A review/handoff intermediate, not your final cut."
     }
   ],
   "artifacts": [
@@ -995,6 +1073,16 @@
       "previewable": false,
       "hint": "Safe-zone QC findings.",
       "help": "JSON report of danger-zone intrusions and caption-over-face hits. Advisory input to the export/composite warning."
+    },
+    {
+      "id": "composite",
+      "kind": "media",
+      "path": "review/composite.mp4",
+      "previewable": true,
+      "z_order": 100,
+      "codec_hint": "h264",
+      "hint": "Flattened preview of all layers.",
+      "help": "The base + caption/overlay layers composited into one .mp4 — the in-app 'assembled result' preview and the muted guide track the editor handoffs include on top (highest z-order). A preview/handoff intermediate in review/, not the final cut (that is render/, yours from the NLE)."
     }
   ],
   "export_targets": [
