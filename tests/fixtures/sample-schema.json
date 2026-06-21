@@ -826,6 +826,62 @@
           "help": "Outline thickness in px; 0 disables the stroke. Capped at the Python boundary."
         },
         {
+          "key": "bg_enabled",
+          "type": "bool",
+          "arity": "switch",
+          "control": "toggle",
+          "ui": {
+            "label": "Background plate",
+            "control": "toggle",
+            "group": "Style"
+          },
+          "flag": "--bg",
+          "default": false,
+          "hint": "Draw a background plate behind the captions.",
+          "help": "A whole-block rounded rectangle behind the caption text, padded to clear the stroke. Off by default."
+        },
+        {
+          "key": "bg_color",
+          "type": "string",
+          "arity": "value",
+          "control": "field",
+          "ui": {
+            "label": "Plate color",
+            "control": "field",
+            "group": "Style",
+            "depends_on": {
+              "key": "bg_enabled",
+              "equals": true
+            }
+          },
+          "flag": "--bg-color",
+          "default": "#000000",
+          "hint": "Background plate color (hex).",
+          "help": "Hex fill of the background plate, e.g. #000000."
+        },
+        {
+          "key": "bg_radius",
+          "type": "number",
+          "arity": "value",
+          "control": "slider",
+          "ui": {
+            "label": "Plate corner radius (px)",
+            "control": "slider",
+            "group": "Style",
+            "depends_on": {
+              "key": "bg_enabled",
+              "equals": true
+            }
+          },
+          "flag": "--bg-radius",
+          "default": 0,
+          "min": 0,
+          "max": 400,
+          "step": 1,
+          "hint": "Background plate corner radius (px).",
+          "help": "Rounded-corner radius of the plate in px; 0 = square corners."
+        },
+        {
           "key": "min_words",
           "type": "number",
           "arity": "value",
@@ -1055,6 +1111,62 @@
           "step": 1,
           "hint": "Text border/stroke thickness (px).",
           "help": "Outline thickness in px; 0 disables the stroke. Capped at the Python boundary."
+        },
+        {
+          "key": "bg_enabled",
+          "type": "bool",
+          "arity": "switch",
+          "control": "toggle",
+          "ui": {
+            "label": "Background plate",
+            "control": "toggle",
+            "group": "Style"
+          },
+          "flag": "--bg",
+          "default": false,
+          "hint": "Draw a background plate behind the captions.",
+          "help": "A whole-block rounded rectangle behind the caption text, padded to clear the stroke. Off by default."
+        },
+        {
+          "key": "bg_color",
+          "type": "string",
+          "arity": "value",
+          "control": "field",
+          "ui": {
+            "label": "Plate color",
+            "control": "field",
+            "group": "Style",
+            "depends_on": {
+              "key": "bg_enabled",
+              "equals": true
+            }
+          },
+          "flag": "--bg-color",
+          "default": "#000000",
+          "hint": "Background plate color (hex).",
+          "help": "Hex fill of the background plate, e.g. #000000."
+        },
+        {
+          "key": "bg_radius",
+          "type": "number",
+          "arity": "value",
+          "control": "slider",
+          "ui": {
+            "label": "Plate corner radius (px)",
+            "control": "slider",
+            "group": "Style",
+            "depends_on": {
+              "key": "bg_enabled",
+              "equals": true
+            }
+          },
+          "flag": "--bg-radius",
+          "default": 0,
+          "min": 0,
+          "max": 400,
+          "step": 1,
+          "hint": "Background plate corner radius (px).",
+          "help": "Rounded-corner radius of the plate in px; 0 = square corners."
         },
         {
           "key": "dry_run",
