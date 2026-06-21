@@ -137,6 +137,7 @@ pub async fn run_plan(
     form_values: HashMap<String, Value>,
     project_root: String,
     cap: usize,
+    pipeline_cmd: Option<String>,
 ) -> Result<String, String> {
     let schema = current_schema(&ctx).await?;
     let set = enabled.into_iter().collect();
@@ -152,6 +153,7 @@ pub async fn run_plan(
         project_root: PathBuf::from(project_root),
         cap,
         form_values,
+        pipeline_cmd,
     };
     let schema = schema.clone();
     let plan = Arc::new(plan);

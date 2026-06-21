@@ -102,6 +102,17 @@ class StateStore {
     this.scheduleFlush();
   }
 
+  // ---- pipeline location (how to invoke the CLI) ----
+
+  getPipelinePath(): string | undefined {
+    return this.state.pipeline_path;
+  }
+
+  setPipelinePath(p: string | undefined): void {
+    this.state.pipeline_path = p && p.trim() ? p : undefined;
+    this.scheduleFlush();
+  }
+
   // ---- project helpers ----
 
   activeProjectRoot(): string | undefined {

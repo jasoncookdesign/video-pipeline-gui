@@ -22,7 +22,7 @@ import { mountCommandPreview } from "./command";
 import { mountLog } from "./log";
 import { mountPreviewer } from "./previewer";
 import { setupDragDrop } from "./dnd";
-import { confirmDialog } from "./dialog";
+import { confirmDialog, pickPath } from "./dialog";
 import { bindLabelHelp, helpMarkup, type HelpPanel } from "./help";
 import { makeSplitter } from "./splitter";
 
@@ -338,6 +338,7 @@ async function boot(): Promise<void> {
         formValues: store.session().formValues,
         projectRoot: root,
         cap,
+        pipelineCmd: store.getPipelinePath(),
       })
       .then((runId) => {
         $("#run-progress").textContent = `run ${runId}`;
@@ -353,6 +354,34 @@ async function boot(): Promise<void> {
     if (selectedTask) void ipc.cancelTask(selectedTask.id);
   });
   cancelBtn.disabled = true;
+
+  // Pipeline location: point the app at the video-pipeline executable so runs work
+  // regardless of how the app was launched (else it relies on PATH).
+  const pipelineBtn = $<HTMLButtonElement>("#pipeline-btn");
+  const reflectPipeline = () => {
+    const p = store.getPipelinePath();
+    pipelineBtn.textContent = p ? "Pipeline ✓" : "Pipeline…";
+    pipelineBtn.title = p
+      ? `Pipeline executable:\n${p}\n\nClick to change.`
+      : "Set the video-pipeline executable to run (so the app finds it regardless of how it was launched)";
+  };
+  reflectPipeline();
+  pipelineBtn.addEventListener("click", () => {
+    void (async () => {
+      const picked = await pickPath(
+        { kind: "file" },
+        {
+          title: "Locate the video-pipeline executable",
+          defaultPath: store.getPipelinePath(),
+        },
+      );
+      if (picked && picked.length > 0) {
+        store.setPipelinePath(picked[0]);
+        await store.flush();
+        reflectPipeline();
+      }
+    })();
+  });
 
   // Reset everything to defaults (confirmed), then reload to rebuild from scratch.
   const resetBtn = $<HTMLButtonElement>("#reset-btn");

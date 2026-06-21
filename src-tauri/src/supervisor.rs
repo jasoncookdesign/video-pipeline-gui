@@ -80,6 +80,10 @@ pub struct RunConfig {
     pub cap: usize,
     /// form values keyed "task_id.param_key" (as persisted in state)
     pub form_values: HashMap<String, Value>,
+    /// Optional explicit program to invoke instead of the schema's bare
+    /// cli_entrypoint (PATH lookup). Lets the app find the pipeline regardless of
+    /// how it was launched. Empty/None ⇒ fall back to the entrypoint on PATH.
+    pub pipeline_cmd: Option<String>,
 }
 
 /// Resolve the concrete on-disk path for an artifact id within a project.
@@ -155,9 +159,13 @@ pub async fn run_plan(
                 let emitter = emitter.clone();
                 let cancel = cancel.clone();
                 let states = states.clone();
+                let pipeline_cmd = cfg.pipeline_cmd.clone();
                 handles.push(tokio::spawn(async move {
-                    let ok = run_one(&schema, &task_id, &cfg_root, &form, &emitter, &cancel, &states)
-                        .await;
+                    let ok = run_one(
+                        &schema, &task_id, &cfg_root, &form, &emitter, &cancel, &states,
+                        pipeline_cmd.as_deref(),
+                    )
+                    .await;
                     (task_id, ok)
                 }));
             }
@@ -210,6 +218,7 @@ async fn run_one(
     emitter: &Arc<dyn Emitter>,
     cancel: &Arc<Cancellation>,
     states: &Arc<Mutex<HashMap<String, TaskState>>>,
+    pipeline_cmd: Option<&str>,
 ) -> bool {
     let task = match schema.task(task_id) {
         Some(t) => t,
@@ -250,7 +259,12 @@ async fn run_one(
         ),
     });
 
-    let mut cmd = TokioCommand::new(&argv[0]);
+    // Invoke the configured pipeline program when set (so the app finds the CLI
+    // regardless of launch environment); otherwise the schema's entrypoint via PATH.
+    let program = pipeline_cmd
+        .filter(|s| !s.is_empty())
+        .unwrap_or(argv[0].as_str());
+    let mut cmd = TokioCommand::new(program);
     cmd.args(&argv[1..])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
@@ -271,7 +285,7 @@ async fn run_one(
             emitter.log(LogLine {
                 task_id: task_id.into(),
                 stream: "stderr".into(),
-                line: format!("spawn failed: {e}"),
+                line: format!("spawn failed: {e} (program: {program})"),
             });
             set_state(states, task_id, TaskState::Failed, emitter).await;
             return false;

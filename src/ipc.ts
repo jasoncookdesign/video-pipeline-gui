@@ -32,6 +32,8 @@ export interface RunPlanArgs {
   formValues: Record<string, unknown>;
   projectRoot: string;
   cap: number;
+  /** Explicit pipeline program to invoke (else the schema entrypoint on PATH). */
+  pipelineCmd?: string;
 }
 
 export interface Ipc {
@@ -259,6 +261,7 @@ class TauriIpc implements Ipc {
       formValues: args.formValues,
       projectRoot: args.projectRoot,
       cap: args.cap,
+      pipelineCmd: args.pipelineCmd,
     });
   }
 
