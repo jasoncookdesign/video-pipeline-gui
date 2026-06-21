@@ -1089,7 +1089,7 @@
     {
       "id": "premiere",
       "label": "Adobe Premiere Pro",
-      "subcommand": "handoff --format premiere",
+      "subcommand": "export premiere",
       "bundle": "exports/premiere",
       "params": [
         {
@@ -1111,12 +1111,12 @@
         }
       ],
       "hint": "FCP7 XML (XMEML) — opens in Premiere Pro.",
-      "help": "Assembles the base cut + caption overlay as tracks referencing the media files (never reconstructed), as FCP7/XMEML XML. Premiere does not import FCPXML, so this is its dedicated target."
+      "help": "Assembles the base cut + caption overlay as tracks referencing the media files (never reconstructed), as FCP7/XMEML XML, with the composite as a disabled top-track guide clip. Premiere does not import FCPXML, so this is its dedicated target."
     },
     {
       "id": "fcpx",
       "label": "Final Cut Pro / DaVinci Resolve",
-      "subcommand": "handoff --format fcpxml",
+      "subcommand": "export fcpxml",
       "bundle": "exports/fcpx",
       "params": [
         {
@@ -1151,7 +1151,16 @@
         }
       ],
       "hint": "FCPXML 1.10 — Final Cut / Resolve.",
-      "help": "Same timeline model serialized as FCPXML for Final Cut Pro and DaVinci Resolve."
+      "help": "Same timeline model serialized as FCPXML for Final Cut Pro and DaVinci Resolve, with the composite as a disabled top-track guide clip."
+    },
+    {
+      "id": "capcut",
+      "label": "CapCut",
+      "subcommand": "export capcut",
+      "bundle": "exports/capcut",
+      "params": [],
+      "hint": "Arranged-media folder (no project file).",
+      "help": "CapCut imports no timeline/EDL, so this gathers the rendered layers (base cut + caption overlay) and the composite into a folder with a README listing the z-order, for hand assembly in CapCut."
     }
   ]
 }
