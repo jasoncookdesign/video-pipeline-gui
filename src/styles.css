@@ -238,6 +238,12 @@ code, .mono { font-family: var(--mono); }
 .tree__task[data-state="Failed"]    .tree__tasklabel { color: var(--err); }
 .tree__task[data-state="Blocked"]   .tree__tasklabel { color: var(--warn); }
 .tree__task[data-state="Skipped"]   .tree__tasklabel { color: var(--text-faint); }
+/* soft-validation warning marker (e.g. a downstream setting conflicts with the
+   project) — visible at launch without opening the step. */
+.tree__task--conflict::after {
+  content: "\26A0\FE0E"; color: var(--warn);
+  font-size: 12px; line-height: 1; flex: 0 0 auto;
+}
 
 /* ---------- center stack ---------- */
 /* Rows: form (flex) · resolved command (docked, auto) · resize handle · run
@@ -296,10 +302,13 @@ code, .mono { font-family: var(--mono); }
 .field[hidden] { display: none; }
 .field__label { color: var(--text); font-size: 12.5px; }
 .field__req { color: var(--err); margin-left: 3px; }
-/* soft validation warning under a field (spans both grid columns) */
+/* soft validation warning, aligned under the field value (not the label) */
 .field__warn {
-  grid-column: 1 / -1; color: var(--warn); font-size: 11px;
+  grid-column: 2 / -1; color: var(--warn); font-size: 11px;
   margin-top: 2px; line-height: 1.4;
+}
+.field__warn::before {
+  content: "\26A0\FE0E"; margin-right: 4px;
 }
 .field__warn[hidden] { display: none; }
 
@@ -600,6 +609,8 @@ code, .mono { font-family: var(--mono); }
 @media (max-width: 880px) {
   .field { grid-template-columns: 1fr; gap: 4px; }
   .field__label { font-size: 12px; }
+  /* single-column (stacked) layout: warning spans the only column */
+  .field__warn { grid-column: 1 / -1; }
 }
 
 /* scrollbars */

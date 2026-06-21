@@ -170,7 +170,28 @@ async function boot(): Promise<void> {
     }
     refreshCommand();
     updateRunEnabled();
+    refreshConflicts();
   };
+
+  // Mark pipeline-tree rows whose shared fields conflict with the first step, so a
+  // restored-session conflict is visible at launch without opening each step.
+  function refreshConflicts(): void {
+    const treeEl = document.getElementById("step-tree");
+    if (!treeEl) return;
+    for (const t of schema.tasks) {
+      const conflict = t.params.some((p) => conflictMessage(t.id, p.key) !== null);
+      const row = treeEl.querySelector<HTMLElement>(
+        `.tree__task[data-task="${CSS.escape(t.id)}"]`,
+      );
+      if (!row) continue;
+      row.classList.toggle("tree__task--conflict", conflict);
+      if (conflict) {
+        row.title = "A setting in this step conflicts with the project settings.";
+      } else {
+        row.removeAttribute("title");
+      }
+    }
+  }
 
   // Soft conflict: a downstream shared control (Identity/Profile) whose value
   // differs from the project's (first-step) value — likely a mistake.
@@ -280,6 +301,11 @@ async function boot(): Promise<void> {
 
   // Select the first task by default.
   if (schema.tasks.length > 0) selectTask(schema.tasks[0]);
+
+  // Launch-time validation: a restored session may carry a downstream value that
+  // conflicts with the project's. Surface it on the tree now, without waiting for
+  // the user to open that step or change a value.
+  refreshConflicts();
 
   // The project lives at <Projects root>/<Project name> (project-init creates it
   // there). Artifact paths + the run's working dir resolve against this. Derived
