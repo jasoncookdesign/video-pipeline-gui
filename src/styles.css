@@ -111,6 +111,11 @@ code, .mono { font-family: var(--mono); }
   color: var(--text-dim);
   border: 1px solid var(--border);
 }
+/* topbar control groups: Run/Cancel · Parallel+progress · (delimited) app controls */
+.topbar__group { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.topbar__group--app {
+  margin-left: 4px; padding-left: 12px; border-left: 1px solid var(--border);
+}
 .topbar__cap { display: flex; align-items: center; gap: 6px; color: var(--text-dim); font-size: 12px; }
 .topbar__cap select {
   background: var(--bg-sunken);
@@ -141,6 +146,13 @@ code, .mono { font-family: var(--mono); }
 .btn--ghost { background: transparent; }
 .btn--icon { padding: 5px 8px; display: inline-flex; align-items: center; }
 .btn--icon svg { width: 15px; height: 15px; display: block; }
+/* run-in-progress spinner inside the Run button */
+.spinner {
+  display: inline-block; width: 11px; height: 11px; margin-right: 6px;
+  vertical-align: -1px; border: 2px solid currentColor; border-top-color: transparent;
+  border-radius: 50%; animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 /* draws the eye to a required setup action (e.g. Set pipeline before a run) */
 .btn--attention { border-color: var(--accent); color: var(--accent); }
 
@@ -243,6 +255,32 @@ code, .mono { font-family: var(--mono); }
 .tree__task--conflict::after {
   content: "\26A0\FE0E"; color: var(--warn);
   font-size: 12px; line-height: 1; flex: 0 0 auto;
+}
+
+/* ---------- iterative editing: project header, completed/reused, edit-task --- */
+.left__head {
+  display: flex; gap: 6px; padding: 8px 10px;
+  border-bottom: 1px solid var(--border); flex: 0 0 auto;
+}
+.left__head .btn { flex: 1 1 auto; font-size: 11px; padding: 4px 6px; }
+
+/* completed task: a checkmark replaces the enable checkbox */
+.tree__check {
+  display: none; color: var(--ok); font-weight: 700;
+  width: 13px; text-align: center; flex: 0 0 auto; font-size: 12px;
+}
+.tree__task[data-completed="true"] .tree__check { display: inline-block; }
+.tree__task[data-completed="true"] .tree__toggle { display: none; }
+/* reused-on-run (up-to-date, skipped) reads as done-but-muted */
+.tree__task[data-state="Reused"] .tree__tasklabel { color: var(--text-dim); }
+
+/* the disabled config view + its Edit-task affordance */
+.form--readonly .form__group { opacity: 0.9; }
+.form__editbox {
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+}
+.form__editnote {
+  margin: 8px 0 0; font-size: 11px; color: var(--text-dim); line-height: 1.45;
 }
 
 /* ---------- center stack ---------- */

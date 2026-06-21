@@ -127,6 +127,27 @@ pub fn path_exists(path: String) -> bool {
     !path.is_empty() && std::path::Path::new(&path).exists()
 }
 
+/// The GUI's per-project sidecar: the form values + enabled set used for the
+/// project's runs, so reopening the folder restores the configuration that
+/// produced its artifacts.
+fn project_state_path(project_root: &str) -> PathBuf {
+    Path::new(project_root).join(".jasonos-gui.json")
+}
+
+#[tauri::command]
+pub fn write_project_state(project_root: String, state: String) -> Result<(), String> {
+    std::fs::write(project_state_path(&project_root), state).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn read_project_state(project_root: String) -> Result<Option<String>, String> {
+    match std::fs::read_to_string(project_state_path(&project_root)) {
+        Ok(s) => Ok(Some(s)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 #[tauri::command]
 pub async fn build_plan(ctx: State<'_, AppCtx>, enabled: Vec<String>) -> Result<Plan, String> {
     let s = current_schema(&ctx).await?;
@@ -143,6 +164,7 @@ pub async fn run_plan(
     project_root: String,
     cap: usize,
     pipeline_cmd: Option<String>,
+    force: Vec<String>,
 ) -> Result<String, String> {
     let schema = current_schema(&ctx).await?;
     let set = enabled.into_iter().collect();
@@ -159,6 +181,7 @@ pub async fn run_plan(
         cap,
         form_values,
         pipeline_cmd,
+        force: force.into_iter().collect(),
     };
     let schema = schema.clone();
     let plan = Arc::new(plan);
@@ -189,6 +212,24 @@ pub async fn list_present_artifacts(
         .map(|a| a.id.clone())
         .collect();
     Ok(present)
+}
+
+/// Which tasks are "Completed" (up-to-date): outputs exist and are at least as new
+/// as their inputs — the same freshness the run uses to reuse/skip them. Drives the
+/// sidebar checkmarks + the disabled-config view.
+#[tauri::command]
+pub async fn up_to_date_tasks(
+    ctx: State<'_, AppCtx>,
+    project_root: String,
+) -> Result<Vec<String>, String> {
+    let s = current_schema(&ctx).await?;
+    let root = Path::new(&project_root);
+    Ok(s
+        .tasks
+        .iter()
+        .filter(|t| supervisor::is_up_to_date(&s, root, &t.id))
+        .map(|t| t.id.clone())
+        .collect())
 }
 
 #[tauri::command]

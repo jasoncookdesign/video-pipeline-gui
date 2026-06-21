@@ -12,6 +12,7 @@
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use serde::Serialize;
 use serde_json::Value;
@@ -84,6 +85,10 @@ pub struct RunConfig {
     /// cli_entrypoint (PATH lookup). Lets the app find the pipeline regardless of
     /// how it was launched. Empty/None ⇒ fall back to the entrypoint on PATH.
     pub pipeline_cmd: Option<String>,
+    /// Task ids to force-run even if their outputs already exist (the "Edit task"
+    /// set). Any enabled task NOT in here whose outputs are all present on disk is
+    /// reused (skipped) — the surgical-iteration mechanism.
+    pub force: BTreeSet<String>,
 }
 
 /// Resolve the concrete on-disk path for an artifact id within a project.
@@ -91,6 +96,47 @@ fn artifact_path(schema: &Schema, project_root: &Path, artifact_id: &str) -> Opt
     schema
         .artifact(artifact_id)
         .map(|a| project_root.join(&a.path).to_string_lossy().to_string())
+}
+
+fn mtime(path: &str) -> Option<SystemTime> {
+    std::fs::metadata(path).ok()?.modified().ok()
+}
+
+/// Make-style freshness: a task is up-to-date (and thus reusable / "Completed")
+/// when it produces something, all its outputs exist, and the oldest output is at
+/// least as new as the newest input. This handles in-place rewrites (base→base)
+/// via mtime — a step re-runs once an upstream or hand-edited input is newer than
+/// its output, and is reused otherwise. A producer with no inputs is up-to-date
+/// once its outputs exist.
+pub fn is_up_to_date(schema: &Schema, project_root: &Path, task_id: &str) -> bool {
+    let task = match schema.task(task_id) {
+        Some(t) => t,
+        None => return false,
+    };
+    if task.produces.is_empty() {
+        return false;
+    }
+    let out_times: Option<Vec<SystemTime>> = task
+        .produces
+        .iter()
+        .map(|ch| mtime(&artifact_path(schema, project_root, ch)?))
+        .collect();
+    let outs = match out_times {
+        Some(v) => v,
+        None => return false, // an output is missing -> not up-to-date
+    };
+    let oldest_out = outs.iter().min().copied();
+    let newest_in = task
+        .consumes
+        .iter()
+        .filter_map(|ch| artifact_path(schema, project_root, ch))
+        .filter_map(|p| mtime(&p))
+        .max();
+    match (oldest_out, newest_in) {
+        (Some(o), Some(i)) => o >= i,
+        (Some(_), None) => true, // no inputs present -> up-to-date if outputs exist
+        _ => false,
+    }
 }
 
 /// Quote an argv token for the display echo (display only — the real spawn passes
@@ -160,10 +206,11 @@ pub async fn run_plan(
                 let cancel = cancel.clone();
                 let states = states.clone();
                 let pipeline_cmd = cfg.pipeline_cmd.clone();
+                let forced = cfg.force.contains(&task_id);
                 handles.push(tokio::spawn(async move {
                     let ok = run_one(
                         &schema, &task_id, &cfg_root, &form, &emitter, &cancel, &states,
-                        pipeline_cmd.as_deref(),
+                        pipeline_cmd.as_deref(), forced,
                     )
                     .await;
                     (task_id, ok)
@@ -219,6 +266,7 @@ async fn run_one(
     cancel: &Arc<Cancellation>,
     states: &Arc<Mutex<HashMap<String, TaskState>>>,
     pipeline_cmd: Option<&str>,
+    forced: bool,
 ) -> bool {
     let task = match schema.task(task_id) {
         Some(t) => t,
@@ -231,6 +279,20 @@ async fn run_one(
         if let Some(p) = artifact_path(schema, project_root, ch) {
             artifact_paths.insert(ch.clone(), p);
         }
+    }
+
+    // Reuse: unless forced, a task whose output is up-to-date (exists and is newer
+    // than its inputs) is skipped — downstream consumes the existing files. This is
+    // what lets a run re-do only the edited task + its forced downstream (Edit task)
+    // and leave the rest (incl. the always-required safe-zone spec) untouched.
+    if !forced && is_up_to_date(schema, project_root, task_id) {
+        emitter.log(LogLine {
+            task_id: task_id.into(),
+            stream: "stdout".into(),
+            line: "↺ reusing existing output (up-to-date — Edit task to re-run)".into(),
+        });
+        set_state(states, task_id, TaskState::Reused, emitter).await;
+        return true;
     }
 
     let argv = match resolve_argv(schema, task_id, form, &artifact_paths) {

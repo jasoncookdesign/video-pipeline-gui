@@ -167,7 +167,8 @@ export type TaskState =
   | "Succeeded"
   | "Failed"
   | "Blocked"
-  | "Skipped";
+  | "Skipped"
+  | "Reused";
 
 // ---- Event payloads --------------------------------------------------------
 
