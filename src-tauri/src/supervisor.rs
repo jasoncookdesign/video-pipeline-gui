@@ -102,12 +102,20 @@ fn mtime(path: &str) -> Option<SystemTime> {
     std::fs::metadata(path).ok()?.modified().ok()
 }
 
-/// Make-style freshness: a task is up-to-date (and thus reusable / "Completed")
-/// when it produces something, all its outputs exist, and the oldest output is at
-/// least as new as the newest input. This handles in-place rewrites (base→base)
-/// via mtime — a step re-runs once an upstream or hand-edited input is newer than
-/// its output, and is reused otherwise. A producer with no inputs is up-to-date
-/// once its outputs exist.
+/// Whether a task is up-to-date (reusable / "Completed").
+///
+/// First, all of the task's declared outputs must exist. Then:
+///  * If the task produces a **signature** artifact (one only it produces, e.g.
+///    roughcut.def, caption.def, the reframed clip, the exports), its presence
+///    means the task is done — full stop. mtime can't be used here because a
+///    shared input like `base` gets rewritten by a *downstream* step (e.g.
+///    roughcut.render rewrites base after roughcut read it), which would falsely
+///    mark the upstream step stale.
+///  * Otherwise the task produces only shared rewrite channels (just
+///    roughcut.render → base). There's no unique artifact to key on, so fall back
+///    to make-style mtime freshness: up-to-date iff the oldest output is at least
+///    as new as the newest input. That re-runs it on a fresh project and after a
+///    hand-edited decision, and reuses it once the cut is applied.
 pub fn is_up_to_date(schema: &Schema, project_root: &Path, task_id: &str) -> bool {
     let task = match schema.task(task_id) {
         Some(t) => t,
@@ -116,16 +124,29 @@ pub fn is_up_to_date(schema: &Schema, project_root: &Path, task_id: &str) -> boo
     if task.produces.is_empty() {
         return false;
     }
-    let out_times: Option<Vec<SystemTime>> = task
+
+    // Every declared output must exist on disk.
+    let out_paths: Vec<String> = task
         .produces
         .iter()
-        .map(|ch| mtime(&artifact_path(schema, project_root, ch)?))
+        .filter_map(|ch| artifact_path(schema, project_root, ch))
         .collect();
-    let outs = match out_times {
-        Some(v) => v,
-        None => return false, // an output is missing -> not up-to-date
-    };
-    let oldest_out = outs.iter().min().copied();
+    if out_paths.len() != task.produces.len()
+        || !out_paths.iter().all(|p| Path::new(p).exists())
+    {
+        return false;
+    }
+
+    // A signature output (produced by exactly one task) present ⇒ done.
+    let has_signature = task.produces.iter().any(|ch| {
+        schema.tasks.iter().filter(|t| t.produces.contains(ch)).count() == 1
+    });
+    if has_signature {
+        return true;
+    }
+
+    // Shared-only outputs (in-place rewrite): make-style mtime freshness.
+    let oldest_out = out_paths.iter().filter_map(|p| mtime(p)).min();
     let newest_in = task
         .consumes
         .iter()
