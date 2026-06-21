@@ -313,6 +313,10 @@ export function mountPreviewer(
         select.value = chosen;
         selectLayer(chosen, presentIds);
       } else {
+        // Nothing to show (e.g. New project) — unload the previous video so its
+        // last frame doesn't linger behind the empty-state watermark.
+        video.removeAttribute("src");
+        video.load();
         enableTransport(false);
         status.textContent = "";
         showEmpty(
