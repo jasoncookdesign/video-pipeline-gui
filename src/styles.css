@@ -418,7 +418,9 @@ code, .mono { font-family: var(--mono); }
   font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px;
   color: var(--text-dim);
 }
-.compose__input { font-size: 12.5px; }
+/* Uniform height across the date/select/text controls so their columns (and the
+   labels above them) line up — a bare <select> is intrinsically shorter. */
+.compose__input { font-size: 12.5px; height: 30px; line-height: 18px; box-sizing: border-box; }
 /* the last part (e.g. the hook) takes the remaining width */
 .compose__part:last-child { flex: 1 1 14ch; }
 .compose__part:last-child .compose__input { width: 100%; }
