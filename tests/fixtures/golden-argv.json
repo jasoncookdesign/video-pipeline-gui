@@ -78,7 +78,8 @@
         "tracker": "mediapipe"
       },
       "artifact_paths": {
-        "base": "work/base.mp4"
+        "base": "work/base.mp4",
+        "reframed": "work/reframed.mp4"
       },
       "argv": [
         "video-pipeline",
@@ -91,7 +92,9 @@
         "--tracker",
         "mediapipe",
         "-o",
-        "work/base.mp4"
+        "work/base.mp4",
+        "--reframed-out",
+        "work/reframed.mp4"
       ]
     },
     {
@@ -101,7 +104,8 @@
         "dry_run": true
       },
       "artifact_paths": {
-        "base": "work/base.mp4"
+        "base": "work/base.mp4",
+        "reframed": "work/reframed.mp4"
       },
       "argv": [
         "video-pipeline",
@@ -115,7 +119,9 @@
         "opencv",
         "--dry-run",
         "-o",
-        "work/base.mp4"
+        "work/base.mp4",
+        "--reframed-out",
+        "work/reframed.mp4"
       ]
     },
     {
@@ -251,6 +257,58 @@
         "work/safezone.json",
         "--report",
         "review/qc-report.json"
+      ]
+    },
+    {
+      "name": "export_premiere_as_task",
+      "task": "export.premiere",
+      "form_values": {},
+      "artifact_paths": {
+        "roughcut.def": "work/roughcut.decision.yml",
+        "reframed": "work/reframed.mp4",
+        "caption.def": "work/captions.yml",
+        "composite": "review/composite.mp4",
+        "export.premiere": "exports/premiere/project.xml"
+      },
+      "argv": [
+        "video-pipeline",
+        "export",
+        "premiere",
+        "work/roughcut.decision.yml",
+        "--fps",
+        "30",
+        "--reframed",
+        "work/reframed.mp4",
+        "--captions",
+        "work/captions.yml",
+        "--composite",
+        "review/composite.mp4",
+        "-o",
+        "exports/premiere/project.xml"
+      ]
+    },
+    {
+      "name": "export_capcut_as_task",
+      "task": "export.capcut",
+      "form_values": {},
+      "artifact_paths": {
+        "base": "work/base.mp4",
+        "caption": "layers/captions.mov",
+        "composite": "review/composite.mp4",
+        "export.capcut": "exports/capcut"
+      },
+      "argv": [
+        "video-pipeline",
+        "export",
+        "capcut",
+        "--base",
+        "work/base.mp4",
+        "--captions",
+        "layers/captions.mov",
+        "--composite",
+        "review/composite.mp4",
+        "-o",
+        "exports/capcut"
       ]
     }
   ]

@@ -47,12 +47,10 @@
 
       <!-- ================= MAIN GRID ================= -->
       <main id="grid">
-        <!-- LEFT: step/task tree + the Output/Packaging section (content-width) -->
+        <!-- LEFT: step/task tree (content-width, always shown). The Output/
+             Packaging step + its export tasks render here like any other step. -->
         <aside id="left" class="pane">
-          <div class="pane__scroll">
-            <div id="step-tree"></div>
-            <div id="packaging"></div>
-          </div>
+          <div id="step-tree" class="pane__scroll"></div>
         </aside>
 
         <!-- CENTER: form + resolved command (docked) + run output -->

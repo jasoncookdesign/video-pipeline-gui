@@ -275,6 +275,7 @@ ALL = [
     "project.init", "safezone.gen", "reframe", "roughcut",
     "roughcut.render", "caption.define", "caption.render", "caption.preview",
     "safezone.qc", "composite",
+    "export.premiere", "export.fcpx", "export.capcut",
 ]
 
 
@@ -326,7 +327,8 @@ def check_scheduler(schema):
     plan = build_plan(s, set(ALL))
     blocked = plan.cascade_blocked({"reframe"})
     for t in ["roughcut", "roughcut.render", "caption.define", "caption.render",
-              "caption.preview", "safezone.qc", "composite"]:
+              "caption.preview", "safezone.qc", "composite",
+              "export.premiere", "export.fcpx", "export.capcut"]:
         assert t in blocked, t
     assert "safezone.gen" not in blocked and "project.init" not in blocked
 

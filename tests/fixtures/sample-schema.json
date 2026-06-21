@@ -61,6 +61,14 @@
       "optional": true,
       "hint": "Flatten the layers into one preview render.",
       "help": "Stacks the base and the caption/overlay layers into a single previewable video — the in-app preview of the assembled result and the guide track the editor handoffs carry on top. A review/handoff intermediate, not the final cut (that is yours, from your NLE)."
+    },
+    {
+      "id": "output",
+      "label": "Output / Packaging",
+      "order": 80,
+      "optional": true,
+      "hint": "Package the project for your editor.",
+      "help": "Editor handoffs: enable the target(s) you want and they run in the batch like any other step. Premiere (FCP7 XML) and Final Cut / Resolve (FCPXML) assemble the cut + caption + composite-guide tracks; CapCut gathers the rendered layers into a folder (it imports no project file)."
     }
   ],
   "tasks": [
@@ -326,7 +334,8 @@
         "base"
       ],
       "produces": [
-        "base"
+        "base",
+        "reframed"
       ],
       "io": [
         {
@@ -340,6 +349,12 @@
           "role": "output",
           "via": "flag",
           "flag": "-o"
+        },
+        {
+          "artifact": "reframed",
+          "role": "output",
+          "via": "flag",
+          "flag": "--reframed-out"
         }
       ],
       "params": [
@@ -1083,6 +1098,201 @@
       ],
       "hint": "Flatten base + overlay layers into review/composite.mp4.",
       "help": "Stacks the layers bottom-to-top by z-order (base, then the caption overlay + any future overlays) into one previewable .mp4 — the in-app preview of the assembled result and the guide track the editor handoffs carry on top. QC advises but never blocks it. A review/handoff intermediate, not your final cut."
+    },
+    {
+      "id": "export.premiere",
+      "step": "output",
+      "label": "Export — Premiere Pro",
+      "subcommand": "export premiere",
+      "optional": true,
+      "consumes": [
+        "roughcut.def",
+        "reframed",
+        "caption.def",
+        "composite"
+      ],
+      "produces": [
+        "export.premiere"
+      ],
+      "io": [
+        {
+          "artifact": "roughcut.def",
+          "role": "input",
+          "via": "positional",
+          "order": 0
+        },
+        {
+          "artifact": "reframed",
+          "role": "input",
+          "via": "flag",
+          "flag": "--reframed"
+        },
+        {
+          "artifact": "caption.def",
+          "role": "input",
+          "via": "flag",
+          "flag": "--captions"
+        },
+        {
+          "artifact": "composite",
+          "role": "input",
+          "via": "flag",
+          "flag": "--composite"
+        },
+        {
+          "artifact": "export.premiere",
+          "role": "output",
+          "via": "flag",
+          "flag": "-o"
+        }
+      ],
+      "params": [
+        {
+          "key": "fps",
+          "type": "number",
+          "arity": "value",
+          "control": "slider",
+          "ui": {
+            "label": "FPS",
+            "control": "slider",
+            "group": "Sequence"
+          },
+          "flag": "--fps",
+          "default": 30,
+          "min": 24,
+          "max": 60,
+          "step": 1,
+          "hint": "Sequence frame rate."
+        }
+      ],
+      "hint": "FCP7 XML (XMEML) — opens in Premiere Pro.",
+      "help": "Assembles the base cut (the decision's KEEP segments over the reframed-uncut clip, as trimmable clips) + caption track + the composite as a disabled top guide track, as FCP7/XMEML XML. Premiere does not import FCPXML, so this is its dedicated target."
+    },
+    {
+      "id": "export.fcpx",
+      "step": "output",
+      "label": "Export — Final Cut / Resolve",
+      "subcommand": "export fcpxml",
+      "optional": true,
+      "consumes": [
+        "roughcut.def",
+        "reframed",
+        "caption.def",
+        "composite"
+      ],
+      "produces": [
+        "export.fcpx"
+      ],
+      "io": [
+        {
+          "artifact": "roughcut.def",
+          "role": "input",
+          "via": "positional",
+          "order": 0
+        },
+        {
+          "artifact": "reframed",
+          "role": "input",
+          "via": "flag",
+          "flag": "--reframed"
+        },
+        {
+          "artifact": "caption.def",
+          "role": "input",
+          "via": "flag",
+          "flag": "--captions"
+        },
+        {
+          "artifact": "composite",
+          "role": "input",
+          "via": "flag",
+          "flag": "--composite"
+        },
+        {
+          "artifact": "export.fcpx",
+          "role": "output",
+          "via": "flag",
+          "flag": "-o"
+        }
+      ],
+      "params": [
+        {
+          "key": "fps",
+          "type": "number",
+          "arity": "value",
+          "control": "slider",
+          "ui": {
+            "label": "FPS",
+            "control": "slider",
+            "group": "Sequence"
+          },
+          "flag": "--fps",
+          "default": 30,
+          "min": 24,
+          "max": 60,
+          "step": 1,
+          "hint": "Sequence frame rate."
+        },
+        {
+          "key": "event",
+          "type": "string",
+          "arity": "value",
+          "control": "field",
+          "ui": {
+            "label": "Event name",
+            "group": "Sequence"
+          },
+          "flag": "--event",
+          "default": "JasonOS",
+          "hint": "FCPXML event name."
+        }
+      ],
+      "hint": "FCPXML 1.10 — Final Cut Pro / DaVinci Resolve.",
+      "help": "The same timeline (base cut + captions + composite guide) serialized as FCPXML 1.10 for Final Cut Pro and DaVinci Resolve."
+    },
+    {
+      "id": "export.capcut",
+      "step": "output",
+      "label": "Export — CapCut",
+      "subcommand": "export capcut",
+      "optional": true,
+      "consumes": [
+        "base",
+        "caption",
+        "composite"
+      ],
+      "produces": [
+        "export.capcut"
+      ],
+      "io": [
+        {
+          "artifact": "base",
+          "role": "input",
+          "via": "flag",
+          "flag": "--base"
+        },
+        {
+          "artifact": "caption",
+          "role": "input",
+          "via": "flag",
+          "flag": "--captions"
+        },
+        {
+          "artifact": "composite",
+          "role": "input",
+          "via": "flag",
+          "flag": "--composite"
+        },
+        {
+          "artifact": "export.capcut",
+          "role": "output",
+          "via": "flag",
+          "flag": "-o"
+        }
+      ],
+      "params": [],
+      "hint": "Arranged-media folder (CapCut imports no project).",
+      "help": "Gathers the rendered layers (the cut base + caption overlay) and the composite into a folder with a README listing the z-order, for hand assembly in CapCut."
     }
   ],
   "artifacts": [
@@ -1102,6 +1312,14 @@
       "z_order": 0,
       "hint": "The working video (reframed/cut).",
       "help": "The base video channel. project.init seeds it; reframe and roughcut.render each rewrite it. The previewer's base layer."
+    },
+    {
+      "id": "reframed",
+      "kind": "media",
+      "path": "work/reframed.mp4",
+      "previewable": false,
+      "hint": "Reframed-uncut clip (editor-handoff source).",
+      "help": "A stable copy of the reframed-but-uncut video, written by reframe alongside base.mp4. The editor handoffs reference this (not base, which roughcut.render rewrites with the cut) so the decision file's KEEP segments lay over the full clip as separate, trimmable clips."
     },
     {
       "id": "safezone.def",
@@ -1164,84 +1382,31 @@
       "codec_hint": "h264",
       "hint": "Flattened preview of all layers.",
       "help": "The base + caption/overlay layers composited into one .mp4 — the in-app 'assembled result' preview and the muted guide track the editor handoffs include on top (highest z-order). A preview/handoff intermediate in review/, not the final cut (that is render/, yours from the NLE)."
+    },
+    {
+      "id": "export.premiere",
+      "kind": "manifest",
+      "path": "exports/premiere/project.xml",
+      "previewable": false,
+      "hint": "Premiere FCP7 XML project.",
+      "help": "The assembled editor project (FCP7/XMEML XML) the Premiere export writes; open it in Premiere Pro."
+    },
+    {
+      "id": "export.fcpx",
+      "kind": "manifest",
+      "path": "exports/fcpx/project.fcpxml",
+      "previewable": false,
+      "hint": "FCPXML 1.10 project.",
+      "help": "The assembled editor project (FCPXML 1.10) for Final Cut Pro / DaVinci Resolve."
+    },
+    {
+      "id": "export.capcut",
+      "kind": "manifest",
+      "path": "exports/capcut",
+      "previewable": false,
+      "hint": "CapCut arranged-media folder.",
+      "help": "The folder of rendered layers + composite + README the CapCut export gathers for hand assembly."
     }
   ],
-  "export_targets": [
-    {
-      "id": "premiere",
-      "label": "Adobe Premiere Pro",
-      "subcommand": "export premiere",
-      "bundle": "exports/premiere",
-      "params": [
-        {
-          "key": "fps",
-          "type": "number",
-          "arity": "value",
-          "control": "slider",
-          "ui": {
-            "label": "FPS",
-            "control": "slider",
-            "group": "Sequence"
-          },
-          "flag": "--fps",
-          "default": 30,
-          "min": 24,
-          "max": 60,
-          "step": 1,
-          "hint": "Sequence frame rate."
-        }
-      ],
-      "hint": "FCP7 XML (XMEML) — opens in Premiere Pro.",
-      "help": "Assembles the base cut + caption overlay as tracks referencing the media files (never reconstructed), as FCP7/XMEML XML, with the composite as a disabled top-track guide clip. Premiere does not import FCPXML, so this is its dedicated target."
-    },
-    {
-      "id": "fcpx",
-      "label": "Final Cut Pro / DaVinci Resolve",
-      "subcommand": "export fcpxml",
-      "bundle": "exports/fcpx",
-      "params": [
-        {
-          "key": "fps",
-          "type": "number",
-          "arity": "value",
-          "control": "slider",
-          "ui": {
-            "label": "FPS",
-            "control": "slider",
-            "group": "Sequence"
-          },
-          "flag": "--fps",
-          "default": 30,
-          "min": 24,
-          "max": 60,
-          "step": 1,
-          "hint": "Sequence frame rate."
-        },
-        {
-          "key": "event",
-          "type": "string",
-          "arity": "value",
-          "control": "field",
-          "ui": {
-            "label": "Event name",
-            "group": "Sequence"
-          },
-          "flag": "--event",
-          "default": "JasonOS",
-          "hint": "FCPXML event name."
-        }
-      ],
-      "hint": "FCPXML 1.10 — Final Cut / Resolve.",
-      "help": "Same timeline model serialized as FCPXML for Final Cut Pro and DaVinci Resolve, with the composite as a disabled top-track guide clip."
-    },
-    {
-      "id": "capcut",
-      "label": "CapCut",
-      "subcommand": "export capcut",
-      "bundle": "exports/capcut",
-      "params": [],
-      "hint": "Arranged-media folder (no project file).",
-      "help": "CapCut imports no timeline/EDL, so this gathers the rendered layers (base cut + caption overlay) and the composite into a folder with a README listing the z-order, for hand assembly in CapCut."
-    }
-  ]
+  "export_targets": []
 }
