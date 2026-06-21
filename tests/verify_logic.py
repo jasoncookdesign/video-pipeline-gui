@@ -274,6 +274,7 @@ def _topo_levels(enabled, edges, indeg):
 ALL = [
     "project.init", "safezone.gen", "reframe", "roughcut",
     "roughcut.render", "caption.define", "caption.render", "safezone.qc",
+    "composite",
 ]
 
 
@@ -298,6 +299,8 @@ def check_scheduler(schema):
     assert _level_of(plan, "roughcut.render") < _level_of(plan, "caption.define")
     assert _level_of(plan, "caption.define") < _level_of(plan, "caption.render")
     assert _level_of(plan, "caption.render") < _level_of(plan, "safezone.qc")
+    # composite consumes base + caption, so it lands after the caption render
+    assert _level_of(plan, "caption.render") < _level_of(plan, "composite")
 
     # 3: skip rewires base to nearest enabled writer
     plan = build_plan(s, {"project.init", "roughcut", "roughcut.render", "safezone.gen"})
@@ -322,7 +325,8 @@ def check_scheduler(schema):
     # 6: fail cascades only to reverse-reachable downstream
     plan = build_plan(s, set(ALL))
     blocked = plan.cascade_blocked({"reframe"})
-    for t in ["roughcut", "roughcut.render", "caption.define", "caption.render", "safezone.qc"]:
+    for t in ["roughcut", "roughcut.render", "caption.define", "caption.render",
+              "safezone.qc", "composite"]:
         assert t in blocked, t
     assert "safezone.gen" not in blocked and "project.init" not in blocked
 
