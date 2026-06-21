@@ -48,6 +48,29 @@
         "multiple": {"type": "boolean"}
       }
     },
+    "compose_part": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label", "control"],
+      "properties": {
+        "key": {"type": "string"},
+        "label": {"type": "string"},
+        "control": {"enum": ["field", "dropdown", "date"]},
+        "options": {"type": "array"},
+        "default": {"type": "string"},
+        "hint": {"type": "string"},
+        "placeholder": {"type": "string"}
+      }
+    },
+    "compose": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "parts"],
+      "properties": {
+        "template": {"type": "string"},
+        "parts": {"type": "array", "items": {"$ref": "#/definitions/compose_part"}}
+      }
+    },
     "ui": {
       "type": "object",
       "additionalProperties": false,
@@ -87,6 +110,7 @@
         "hint": {"type": "string"},
         "help": {"type": "string"},
         "example": {"type": "string"},
+        "compose": {"$ref": "#/definitions/compose"},
         "path": {"$ref": "#/definitions/path_spec"},
         "ui": {"$ref": "#/definitions/ui"}
       },
