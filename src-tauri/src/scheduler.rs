@@ -275,11 +275,13 @@ mod tests {
     }
 
     #[test]
-    fn roots_share_the_first_level_and_run_in_parallel() {
+    fn project_init_is_sole_root_then_parallel() {
         let plan = build_plan(&schema(), &enabled(ALL)).unwrap();
-        // project.init and safezone.gen have no consumes -> same first level.
-        assert!(plan.levels[0].contains(&"project.init".to_string()));
-        assert!(plan.levels[0].contains(&"safezone.gen".to_string()));
+        // project.init is the only root (safezone.gen now depends on `project`);
+        // reframe + safezone.gen run in parallel at the next level.
+        assert_eq!(plan.levels[0], vec!["project.init".to_string()]);
+        assert_eq!(level_of(&plan, "reframe"), 1);
+        assert_eq!(level_of(&plan, "safezone.gen"), 1);
     }
 
     #[test]
@@ -352,9 +354,9 @@ mod tests {
     #[test]
     fn concurrency_cap_chunks_a_level_into_waves() {
         let plan = build_plan(&schema(), &enabled(ALL)).unwrap();
-        // first level has 2 roots; cap of 1 -> two waves, cap of 2 -> one wave.
-        assert_eq!(plan.waves(0, 1).len(), 2);
-        assert_eq!(plan.waves(0, 2).len(), 1);
+        // level 1 has 2 parallel tasks; cap of 1 -> two waves, cap of 2 -> one wave.
+        assert_eq!(plan.waves(1, 1).len(), 2);
+        assert_eq!(plan.waves(1, 2).len(), 1);
     }
 
     #[test]

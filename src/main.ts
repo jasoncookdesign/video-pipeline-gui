@@ -256,9 +256,24 @@ async function boot(): Promise<void> {
   // Select the first task by default.
   if (schema.tasks.length > 0) selectTask(schema.tasks[0]);
 
+  // The project lives at <Projects root>/<Project name> (project-init creates it
+  // there). Artifact paths + the run's working dir resolve against this. Derived
+  // from the Initialize-project fields; falls back to any active project.
+  function projectRoot(): string | undefined {
+    const root = store.getFormValue("project.init.root");
+    const name = store.getFormValue("project.init.name");
+    if (
+      typeof root === "string" && root.trim() &&
+      typeof name === "string" && name.trim()
+    ) {
+      return `${root.replace(/\/+$/, "")}/${name.trim()}`;
+    }
+    return store.activeProjectRoot();
+  }
+
   // Initial plan + previewer pass.
   refreshPlan();
-  void previewer.refresh(store.activeProjectRoot());
+  void previewer.refresh(projectRoot());
 
   // Lock the preview aspect to the project profile (stored value or schema default).
   const profileProp = sharedProps.find((s) => s.key === "profile");
@@ -286,7 +301,7 @@ async function boot(): Promise<void> {
     if (row) row.dataset.state = p.state;
     if (p.state === "Succeeded") {
       // A produced artifact may now exist — refresh available preview layers.
-      void previewer.refresh(store.activeProjectRoot());
+      void previewer.refresh(projectRoot());
     }
   });
   await ipc.listen<PlanProgressEvent>("plan-progress", (p) => {
@@ -315,7 +330,7 @@ async function boot(): Promise<void> {
 
   runBtn.addEventListener("click", () => {
     const cap = Math.max(1, Number(capInput.value) || 1);
-    const root = store.activeProjectRoot() ?? "<project-root>";
+    const root = projectRoot() ?? "<project-root>";
     void store.flush();
     void ipc
       .runPlan({

@@ -89,6 +89,20 @@ fn artifact_path(schema: &Schema, project_root: &Path, artifact_id: &str) -> Opt
         .map(|a| project_root.join(&a.path).to_string_lossy().to_string())
 }
 
+/// Quote an argv token for the display echo (display only — the real spawn passes
+/// argv as a list, so quoting never affects execution).
+fn shell_quote(arg: &str) -> String {
+    if arg.is_empty()
+        || arg
+            .chars()
+            .any(|c| c.is_whitespace() || "\"'$`\\".contains(c))
+    {
+        format!("\"{}\"", arg.replace('\\', "\\\\").replace('"', "\\\""))
+    } else {
+        arg.to_string()
+    }
+}
+
 /// Build the form-value map for a single task (strip the "task_id." prefix).
 fn task_form_values(all: &HashMap<String, Value>, task_id: &str) -> HashMap<String, Value> {
     let prefix = format!("{task_id}.");
@@ -225,17 +239,31 @@ async fn run_one(
 
     set_state(states, task_id, TaskState::Running, emitter).await;
     // The resolved argv is printed at task start — the teaching/debugging affordance.
+    // Quote tokens with spaces so the echo is unambiguous (the actual spawn passes
+    // argv as a list, so quoting is display-only).
     emitter.log(LogLine {
         task_id: task_id.into(),
         stream: "stdout".into(),
-        line: format!("$ {}", argv.join(" ")),
+        line: format!(
+            "$ {}",
+            argv.iter().map(|a| shell_quote(a)).collect::<Vec<_>>().join(" ")
+        ),
     });
 
     let mut cmd = TokioCommand::new(&argv[0]);
     cmd.args(&argv[1..])
-        .current_dir(project_root)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
+    // Run in the project dir when it exists. project-init *creates* the project dir,
+    // so for that step (dir not there yet) fall back to an existing ancestor — never
+    // an absent cwd, which makes spawn fail with ENOENT before the tool even runs.
+    if project_root.is_dir() {
+        cmd.current_dir(project_root);
+    } else if let Some(parent) = project_root.parent() {
+        if parent.is_dir() {
+            cmd.current_dir(parent);
+        }
+    }
 
     let mut child = match cmd.spawn() {
         Ok(c) => c,
