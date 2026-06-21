@@ -72,10 +72,14 @@ class StateStore {
     this.notify();
   }
 
-  /** Reset just the configuration (form values) — keeps theme, panels, pipeline,
-   *  window. Used by "New project". */
+  /** Reset just the configuration (form values, active project, preview layer) —
+   *  keeps theme, panels, pipeline, window. Used by "New project". Clearing the
+   *  active project is essential: projectRoot() falls back to it, so leaving it set
+   *  would keep the old project loaded (incl. its preview layers). */
   resetConfig(): void {
     this.state.session.formValues = {};
+    this.state.session.previewLayer = undefined;
+    this.state.active_project = undefined;
     this.scheduleFlush();
     this.notify();
   }
