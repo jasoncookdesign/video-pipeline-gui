@@ -18,6 +18,9 @@ export interface FormHooks {
    *  app can react to specific fields (e.g. propagating the project identity). */
   onChange: (changedKey?: string) => void;
   help: HelpPanel;
+  /** Soft validation: a warning to show under the given param, or null. Used to
+   *  flag a downstream value that conflicts with an earlier stage. */
+  conflict?: (paramKey: string) => string | null;
 }
 
 /** Decide the concrete control: ui.control overrides; else derive from type. */
@@ -413,6 +416,22 @@ function buildControl(
 
   input.classList.add("field__input");
   wrapper.append(label, input);
+
+  // Soft conflict warning under the field (e.g. a downstream Profile/Identity that
+  // differs from the first step). Re-checked on input/change of this field.
+  if (hooks.conflict) {
+    const warn = document.createElement("div");
+    warn.className = "field__warn";
+    const checkConflict = () => {
+      const msg = hooks.conflict?.(param.key) ?? null;
+      warn.textContent = msg ?? "";
+      warn.hidden = !msg;
+    };
+    wrapper.appendChild(warn);
+    wrapper.addEventListener("input", checkConflict);
+    wrapper.addEventListener("change", checkConflict);
+    checkConflict();
+  }
 
   const refreshVisibility = () => {
     const dep = param.ui.depends_on;
