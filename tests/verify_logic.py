@@ -288,9 +288,10 @@ def check_scheduler(schema):
     """The eight scenarios mirrored from scheduler.rs #[test]."""
     s = schema
 
-    # 1: roots share the first level
+    # 1: project-init is the sole root; reframe + safezone.gen run parallel next.
     plan = build_plan(s, set(ALL))
-    assert "project.init" in plan.levels[0] and "safezone.gen" in plan.levels[0]
+    assert plan.levels[0] == ["project.init"], plan.levels[0]
+    assert _level_of(plan, "reframe") == 1 and _level_of(plan, "safezone.gen") == 1
 
     # 2: full-graph ordering
     assert _level_of(plan, "reframe") < _level_of(plan, "roughcut")
@@ -325,10 +326,10 @@ def check_scheduler(schema):
         assert t in blocked, t
     assert "safezone.gen" not in blocked and "project.init" not in blocked
 
-    # 7: concurrency cap chunks a level into waves
+    # 7: concurrency cap chunks a level into waves (level 1 has 2 parallel tasks)
     plan = build_plan(s, set(ALL))
-    assert len(plan.waves(0, 1)) == 2
-    assert len(plan.waves(0, 2)) == 1
+    assert len(plan.waves(1, 1)) == 2
+    assert len(plan.waves(1, 2)) == 1
 
     # 8: single-step run
     plan = build_plan(s, {"project.init"})

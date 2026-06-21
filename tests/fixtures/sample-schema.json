@@ -64,7 +64,8 @@
       "optional": false,
       "consumes": [],
       "produces": [
-        "base"
+        "base",
+        "project"
       ],
       "io": [],
       "params": [
@@ -193,7 +194,9 @@
       "label": "Generate safe-zone spec",
       "subcommand": "safezone-gen",
       "optional": false,
-      "consumes": [],
+      "consumes": [
+        "project"
+      ],
       "produces": [
         "safezone.def"
       ],
@@ -905,6 +908,14 @@
     }
   ],
   "artifacts": [
+    {
+      "id": "project",
+      "kind": "descriptor",
+      "path": "project.yml",
+      "previewable": false,
+      "hint": "The initialized project (project.yml + folder layout).",
+      "help": "Produced by project-init; consumed as an ordering dependency by steps that write into the project but don't read a media channel (e.g. safe-zone generation)."
+    },
     {
       "id": "base",
       "kind": "layer",

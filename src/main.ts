@@ -22,7 +22,7 @@ import { mountCommandPreview } from "./command";
 import { mountLog } from "./log";
 import { mountPreviewer } from "./previewer";
 import { setupDragDrop } from "./dnd";
-import { confirmDialog } from "./dialog";
+import { confirmDialog, pickPath } from "./dialog";
 import { bindLabelHelp, helpMarkup, type HelpPanel } from "./help";
 import { makeSplitter } from "./splitter";
 
@@ -256,9 +256,24 @@ async function boot(): Promise<void> {
   // Select the first task by default.
   if (schema.tasks.length > 0) selectTask(schema.tasks[0]);
 
+  // The project lives at <Projects root>/<Project name> (project-init creates it
+  // there). Artifact paths + the run's working dir resolve against this. Derived
+  // from the Initialize-project fields; falls back to any active project.
+  function projectRoot(): string | undefined {
+    const root = store.getFormValue("project.init.root");
+    const name = store.getFormValue("project.init.name");
+    if (
+      typeof root === "string" && root.trim() &&
+      typeof name === "string" && name.trim()
+    ) {
+      return `${root.replace(/\/+$/, "")}/${name.trim()}`;
+    }
+    return store.activeProjectRoot();
+  }
+
   // Initial plan + previewer pass.
   refreshPlan();
-  void previewer.refresh(store.activeProjectRoot());
+  void previewer.refresh(projectRoot());
 
   // Lock the preview aspect to the project profile (stored value or schema default).
   const profileProp = sharedProps.find((s) => s.key === "profile");
@@ -286,7 +301,7 @@ async function boot(): Promise<void> {
     if (row) row.dataset.state = p.state;
     if (p.state === "Succeeded") {
       // A produced artifact may now exist — refresh available preview layers.
-      void previewer.refresh(store.activeProjectRoot());
+      void previewer.refresh(projectRoot());
     }
   });
   await ipc.listen<PlanProgressEvent>("plan-progress", (p) => {
@@ -315,7 +330,7 @@ async function boot(): Promise<void> {
 
   runBtn.addEventListener("click", () => {
     const cap = Math.max(1, Number(capInput.value) || 1);
-    const root = store.activeProjectRoot() ?? "<project-root>";
+    const root = projectRoot() ?? "<project-root>";
     void store.flush();
     void ipc
       .runPlan({
@@ -323,6 +338,7 @@ async function boot(): Promise<void> {
         formValues: store.session().formValues,
         projectRoot: root,
         cap,
+        pipelineCmd: store.getPipelinePath(),
       })
       .then((runId) => {
         $("#run-progress").textContent = `run ${runId}`;
@@ -338,6 +354,34 @@ async function boot(): Promise<void> {
     if (selectedTask) void ipc.cancelTask(selectedTask.id);
   });
   cancelBtn.disabled = true;
+
+  // Pipeline location: point the app at the video-pipeline executable so runs work
+  // regardless of how the app was launched (else it relies on PATH).
+  const pipelineBtn = $<HTMLButtonElement>("#pipeline-btn");
+  const reflectPipeline = () => {
+    const p = store.getPipelinePath();
+    pipelineBtn.textContent = p ? "Pipeline ✓" : "Pipeline…";
+    pipelineBtn.title = p
+      ? `Pipeline executable:\n${p}\n\nClick to change.`
+      : "Set the video-pipeline executable to run (so the app finds it regardless of how it was launched)";
+  };
+  reflectPipeline();
+  pipelineBtn.addEventListener("click", () => {
+    void (async () => {
+      const picked = await pickPath(
+        { kind: "file" },
+        {
+          title: "Locate the video-pipeline executable",
+          defaultPath: store.getPipelinePath(),
+        },
+      );
+      if (picked && picked.length > 0) {
+        store.setPipelinePath(picked[0]);
+        await store.flush();
+        reflectPipeline();
+      }
+    })();
+  });
 
   // Reset everything to defaults (confirmed), then reload to rebuild from scratch.
   const resetBtn = $<HTMLButtonElement>("#reset-btn");
