@@ -180,7 +180,7 @@ export function mountPreviewer(
   function selectLayer(id: string, presentIds: Set<string>): void {
     const artifact = previewable.find((a) => a.id === id);
     if (!artifact) return;
-    const paths = artifactPathsFor(schema, store.activeProjectRoot());
+    const paths = artifactPathsFor(schema, store.projectRoot());
     const src = paths[artifact.id];
     store.setPreviewLayer(id);
     if (!presentIds.has(id) || !src) {

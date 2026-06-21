@@ -121,6 +121,22 @@ class StateStore {
     return this.state.projects[name];
   }
 
+  /** The project root everything resolves artifact paths against: `<root>/<name>`
+   *  derived from the live Initialize-project fields, falling back to the active
+   *  (already-initialized) project. One source so the glass-box command preview
+   *  and the previewer match exactly what the run executes. */
+  projectRoot(): string | undefined {
+    const root = this.getFormValue("project.init.root");
+    const name = this.getFormValue("project.init.name");
+    if (
+      typeof root === "string" && root.trim() &&
+      typeof name === "string" && name.trim()
+    ) {
+      return `${root.replace(/\/+$/, "")}/${name.trim()}`;
+    }
+    return this.activeProjectRoot();
+  }
+
   // ---- flush ----
 
   private scheduleFlush(): void {

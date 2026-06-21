@@ -308,19 +308,10 @@ async function boot(): Promise<void> {
   refreshConflicts();
 
   // The project lives at <Projects root>/<Project name> (project-init creates it
-  // there). Artifact paths + the run's working dir resolve against this. Derived
-  // from the Initialize-project fields; falls back to any active project.
-  function projectRoot(): string | undefined {
-    const root = store.getFormValue("project.init.root");
-    const name = store.getFormValue("project.init.name");
-    if (
-      typeof root === "string" && root.trim() &&
-      typeof name === "string" && name.trim()
-    ) {
-      return `${root.replace(/\/+$/, "")}/${name.trim()}`;
-    }
-    return store.activeProjectRoot();
-  }
+  // there). Artifact paths + the run's working dir resolve against this. Single
+  // shared derivation in the store so the command preview, previewer, and run all
+  // agree (see store.projectRoot()).
+  const projectRoot = (): string | undefined => store.projectRoot();
 
   // Initial plan + previewer pass.
   refreshPlan();

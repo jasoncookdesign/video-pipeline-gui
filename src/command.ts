@@ -132,7 +132,7 @@ export function mountCommandPreview(
         prevTokens = null;
         prevTaskId = task.id;
       }
-      const root = store.activeProjectRoot();
+      const root = store.projectRoot();
       try {
         const argv = await resolveArgv(
           schema,
