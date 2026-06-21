@@ -882,6 +882,25 @@
           "help": "Rounded-corner radius of the plate in px; 0 = square corners."
         },
         {
+          "key": "h_offset",
+          "type": "enum",
+          "arity": "value",
+          "control": "dropdown",
+          "ui": {
+            "label": "Horizontal placement",
+            "control": "dropdown",
+            "group": "Style"
+          },
+          "flag": "--h-offset",
+          "default": "clear-notch",
+          "options": [
+            "clear-notch",
+            "center"
+          ],
+          "hint": "Horizontal placement of the caption block.",
+          "help": "clear-notch fills the widest notch-free span (wider, may bias left of frame-center at lower-third); center keeps the block symmetric about frame-center while still clearing the notch."
+        },
+        {
           "key": "min_words",
           "type": "number",
           "arity": "value",
@@ -1167,6 +1186,25 @@
           "step": 1,
           "hint": "Background plate corner radius (px).",
           "help": "Rounded-corner radius of the plate in px; 0 = square corners."
+        },
+        {
+          "key": "h_offset",
+          "type": "enum",
+          "arity": "value",
+          "control": "dropdown",
+          "ui": {
+            "label": "Horizontal placement",
+            "control": "dropdown",
+            "group": "Style"
+          },
+          "flag": "--h-offset",
+          "default": "clear-notch",
+          "options": [
+            "clear-notch",
+            "center"
+          ],
+          "hint": "Horizontal placement of the caption block.",
+          "help": "clear-notch fills the widest notch-free span (wider, may bias left of frame-center at lower-third); center keeps the block symmetric about frame-center while still clearing the notch."
         },
         {
           "key": "dry_run",
