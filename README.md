@@ -96,6 +96,13 @@ meta-schema owns what *conformant* means. See
 [`../video-pipeline/docs/gui-schema.md`](../video-pipeline/docs/gui-schema.md) for
 the pipeline side of the contract.
 
+Parameter controls are scalar (text, number, dropdown, toggle, path picker) plus a
+repeatable **rows** control: a structured table whose value is a list of row
+objects, each emitted as one repeated flag (`--add key=value;…`). It backs
+multi-entry inputs such as the overlay step's per-overlay list, and — like every
+control — is grammar-defined, so the same three assemblers (Python reference, Rust
+`command.rs`, the JS mock port) stay pinned to the golden-argv contract.
+
 ## Repository layout
 
 ```
