@@ -343,7 +343,8 @@
       ],
       "produces": [
         "base",
-        "reframed"
+        "reframed",
+        "subject.occupancy"
       ],
       "io": [
         {
@@ -363,6 +364,12 @@
           "role": "output",
           "via": "flag",
           "flag": "--reframed-out"
+        },
+        {
+          "artifact": "subject.occupancy",
+          "role": "output",
+          "via": "flag",
+          "flag": "--occupancy-out"
         }
       ],
       "params": [
@@ -471,6 +478,40 @@
           ],
           "hint": "Subject detector backend.",
           "help": "opencv is dependency-light; mediapipe is the higher-quality daily-driver face/pose tracker."
+        },
+        {
+          "key": "scale",
+          "type": "number",
+          "arity": "value",
+          "control": "slider",
+          "ui": {
+            "label": "Scale (override)",
+            "control": "slider",
+            "group": "Framing"
+          },
+          "flag": "--scale",
+          "min": 0.3,
+          "max": 1.0,
+          "step": 0.05,
+          "hint": "Crop tightness override (optional).",
+          "help": "Overrides the framing intent's crop tightness. 1.0 = widest native crop; lower zooms in. Leave unset to let Framing decide. (Pulling back wider than native is not yet supported.)"
+        },
+        {
+          "key": "subject_y",
+          "type": "number",
+          "arity": "value",
+          "control": "slider",
+          "ui": {
+            "label": "Subject Y (override)",
+            "control": "slider",
+            "group": "Framing"
+          },
+          "flag": "--subject-y",
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "hint": "Vertical anchor override (optional).",
+          "help": "Overrides where the subject sits vertically (0=top, 1=bottom). Only bites when the crop is shorter than the source. Leave unset to let Framing decide."
         },
         {
           "key": "dry_run",
@@ -1069,6 +1110,45 @@
             "sigil-zero"
           ],
           "hint": "Override the identity style."
+        },
+        {
+          "key": "subject_occupancy",
+          "type": "path",
+          "arity": "value",
+          "control": "picker",
+          "ui": {
+            "label": "Subject occupancy",
+            "control": "picker",
+            "group": "Placement"
+          },
+          "flag": "--subject-occupancy",
+          "hint": "Subject occupancy from reframe (optional) — captions dodge it.",
+          "help": "Point at the reframe step's occupancy file (work/reframe.occupancy.json, INI-090 Phase 2). When set, captions relocate off the subject; absent or missing, captions render normally.",
+          "path": {
+            "kind": "file",
+            "extensions": [
+              "json"
+            ]
+          }
+        },
+        {
+          "key": "position",
+          "type": "enum",
+          "arity": "value",
+          "control": "dropdown",
+          "ui": {
+            "label": "Caption position",
+            "control": "dropdown",
+            "group": "Placement"
+          },
+          "flag": "--position",
+          "options": [
+            "upper-third",
+            "center",
+            "lower-third"
+          ],
+          "hint": "Caption anchor (optional override).",
+          "help": "Forces the caption band; overrides the style default and any framing-intent hint carried in the occupancy file."
         },
         {
           "key": "karaoke",
@@ -2066,6 +2146,14 @@
       "previewable": false,
       "hint": "Reframed-uncut clip (editor-handoff source).",
       "help": "A stable copy of the reframed-but-uncut video, written by reframe alongside base.mp4. The editor handoffs reference this (not base, which roughcut.render rewrites with the cut) so the decision file's KEEP segments lay over the full clip as separate, trimmable clips."
+    },
+    {
+      "id": "subject.occupancy",
+      "kind": "descriptor",
+      "path": "work/reframe.occupancy.json",
+      "previewable": false,
+      "hint": "The subject's footprint in the reframed frame.",
+      "help": "Written by reframe (INI-090): the tracked subject's box projected into the target frame, as caption avoid-windows. The caption render optionally consumes it so captions dodge the subject."
     },
     {
       "id": "safezone.def",

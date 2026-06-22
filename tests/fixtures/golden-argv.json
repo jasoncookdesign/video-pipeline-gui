@@ -79,7 +79,8 @@
       },
       "artifact_paths": {
         "base": "work/base.mp4",
-        "reframed": "work/reframed.mp4"
+        "reframed": "work/reframed.mp4",
+        "subject.occupancy": "work/reframe.occupancy.json"
       },
       "argv": [
         "video-pipeline",
@@ -96,7 +97,9 @@
         "-o",
         "work/base.mp4",
         "--reframed-out",
-        "work/reframed.mp4"
+        "work/reframed.mp4",
+        "--occupancy-out",
+        "work/reframe.occupancy.json"
       ]
     },
     {
@@ -107,7 +110,8 @@
       },
       "artifact_paths": {
         "base": "work/base.mp4",
-        "reframed": "work/reframed.mp4"
+        "reframed": "work/reframed.mp4",
+        "subject.occupancy": "work/reframe.occupancy.json"
       },
       "argv": [
         "video-pipeline",
@@ -125,7 +129,9 @@
         "-o",
         "work/base.mp4",
         "--reframed-out",
-        "work/reframed.mp4"
+        "work/reframed.mp4",
+        "--occupancy-out",
+        "work/reframe.occupancy.json"
       ]
     },
     {
