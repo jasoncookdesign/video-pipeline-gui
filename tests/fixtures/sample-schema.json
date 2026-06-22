@@ -55,12 +55,20 @@
       "help": "Advisory check: flags protected elements intruding on the danger polygon and captions over the speaker's face. Advises, never blocks."
     },
     {
+      "id": "overlay",
+      "label": "Overlays",
+      "order": 65,
+      "optional": true,
+      "hint": "Timed/placed content overlays (image / video / source card).",
+      "help": "Places content overlays \u2014 a still, a video asset, or a generated article card \u2014 on a source-time window proposed from the transcript, as an editable overlay.def. Renders the placed/timed composite and emits overlay.occupancy so captions dodge overlays and QC stays aware."
+    },
+    {
       "id": "composite",
       "label": "Composite",
       "order": 70,
       "optional": true,
       "hint": "Flatten the layers into one preview render.",
-      "help": "Stacks the base and the caption/overlay layers into a single previewable video — the in-app preview of the assembled result and the guide track the editor handoffs carry on top. A review/handoff intermediate, not the final cut (that is yours, from your NLE)."
+      "help": "Stacks the base and the caption/overlay layers into a single previewable video \u2014 the in-app preview of the assembled result and the guide track the editor handoffs carry on top. A review/handoff intermediate, not the final cut (that is yours, from your NLE)."
     },
     {
       "id": "output",
@@ -123,7 +131,7 @@
                 "key": "hook",
                 "label": "Hook",
                 "control": "field",
-                "hint": "A short description — becomes the render-file slug.",
+                "hint": "A short description \u2014 becomes the render-file slug.",
                 "placeholder": "short description"
               }
             ]
@@ -140,7 +148,7 @@
           },
           "flag": "--source",
           "hint": "Source video to ingest.",
-          "help": "Pick the source clip. On run it is copied into the project — archived in source/ and seeded as the base layer (work/base.mp4) — so the reframe / rough-cut steps have their input. Browse or drag a file onto the field.",
+          "help": "Pick the source clip. On run it is copied into the project \u2014 archived in source/ and seeded as the base layer (work/base.mp4) \u2014 so the reframe / rough-cut steps have their input. Browse or drag a file onto the field.",
           "path": {
             "kind": "file",
             "extensions": [
@@ -432,7 +440,7 @@
           "flag": "--dry-run",
           "default": false,
           "hint": "Plan the crop without rendering.",
-          "help": "Computes and prints the crop plan but writes no video — fast way to sanity-check tracking before a full render."
+          "help": "Computes and prints the crop plan but writes no video \u2014 fast way to sanity-check tracking before a full render."
         }
       ],
       "hint": "Crop landscape source to the portrait frame.",
@@ -478,7 +486,7 @@
           "flag": "--no-trim-filler",
           "default": false,
           "hint": "Keep filler / preserve audio continuity.",
-          "help": "Disables filler/dead-air trimming — one whole-clip KEEP, no speech edits. Use when continuity matters more than tightness."
+          "help": "Disables filler/dead-air trimming \u2014 one whole-clip KEEP, no speech edits. Use when continuity matters more than tightness."
         },
         {
           "key": "no_false_starts",
@@ -1293,7 +1301,7 @@
         }
       ],
       "hint": "Checkerboard-baked preview of the caption layer.",
-      "help": "Renders the transparent caption overlay over a neutral checkerboard into plain h264 so the previewer can play it in isolation. Optional — enable it only when you want to preview the caption layer in the app."
+      "help": "Renders the transparent caption overlay over a neutral checkerboard into plain h264 so the previewer can play it in isolation. Optional \u2014 enable it only when you want to preview the caption layer in the app."
     },
     {
       "id": "safezone.qc",
@@ -1343,7 +1351,7 @@
           "flag": "--strict",
           "default": false,
           "hint": "Exit non-zero on any violation.",
-          "help": "Turns advisory warnings into a hard failure (exit 1) — for scripted gating, not the interactive default."
+          "help": "Turns advisory warnings into a hard failure (exit 1) \u2014 for scripted gating, not the interactive default."
         },
         {
           "key": "no_face_check",
@@ -1373,11 +1381,242 @@
           "min": 0.0,
           "max": 1.0,
           "step": 0.05,
-          "hint": "Caption∩face fraction that flags occlusion."
+          "hint": "Caption\u2229face fraction that flags occlusion."
         }
       ],
       "hint": "Advisory: flag danger-zone intrusions + captions over faces.",
-      "help": "Checks protected elements against the danger polygon (notch-aware) and captions over the speaker's face. Advisory only — it warns at the export/composite control but never blocks (SADD §4.2). --strict makes it exit non-zero for CI gating."
+      "help": "Checks protected elements against the danger polygon (notch-aware) and captions over the speaker's face. Advisory only \u2014 it warns at the export/composite control but never blocks (SADD \u00a74.2). --strict makes it exit non-zero for CI gating."
+    },
+    {
+      "id": "overlay.define",
+      "step": "overlay",
+      "label": "Build overlay file",
+      "subcommand": "overlay",
+      "optional": true,
+      "consumes": [],
+      "produces": [
+        "overlay.def"
+      ],
+      "io": [
+        {
+          "artifact": "overlay.def",
+          "role": "output",
+          "via": "flag",
+          "flag": "-o"
+        }
+      ],
+      "params": [
+        {
+          "key": "profile",
+          "type": "enum",
+          "arity": "value",
+          "control": "dropdown",
+          "ui": {
+            "label": "Profile",
+            "control": "dropdown",
+            "group": "Output"
+          },
+          "flag": "--profile",
+          "default": "reels-9x16",
+          "options": [
+            "reels-9x16",
+            "story-9x16",
+            "feed-portrait-4x5",
+            "feed-square-1x1",
+            "feed-landscape-16x9"
+          ],
+          "hint": "Output aspect/dimensions preset.",
+          "help": "The target frame. reels-9x16 (1080x1920) is the default for vertical Reels; the feed-* presets cover 4:5, 1:1, and 16:9. Drives crop math and safe-zone derivation.",
+          "example": "--profile reels-9x16"
+        },
+        {
+          "key": "source",
+          "type": "string",
+          "arity": "value",
+          "control": "field",
+          "ui": {
+            "label": "Source name",
+            "group": "Setup"
+          },
+          "flag": "--source",
+          "hint": "Base clip name recorded in the file (advisory)."
+        },
+        {
+          "key": "transcript",
+          "type": "path",
+          "arity": "value",
+          "control": "picker",
+          "ui": {
+            "label": "Transcript",
+            "group": "Timing"
+          },
+          "flag": "--transcript",
+          "hint": "Word-level transcript JSON for window proposing.",
+          "help": "When given, an overlay's window can be proposed from the span where its subject is discussed (the AI-leverage step).",
+          "path": {
+            "kind": "file",
+            "extensions": [
+              "json"
+            ]
+          }
+        }
+      ],
+      "hint": "Scaffold / author the editable overlay decision file.",
+      "help": "Writes overlay.def \u2014 one scannable line per overlay (kind, src, window, placement, transition). Hand-edit it (or pass --transcript to propose each window from the spoken span), then render."
+    },
+    {
+      "id": "overlay.card",
+      "step": "overlay",
+      "label": "Capture source card",
+      "subcommand": "overlay-card",
+      "optional": true,
+      "consumes": [],
+      "produces": [
+        "card.content"
+      ],
+      "io": [
+        {
+          "artifact": "card.content",
+          "role": "output",
+          "via": "flag",
+          "flag": "-o"
+        }
+      ],
+      "params": [
+        {
+          "key": "url",
+          "type": "string",
+          "arity": "positional",
+          "control": "field",
+          "ui": {
+            "label": "URL",
+            "group": "Input"
+          },
+          "order": 0,
+          "required": true,
+          "hint": "Article / page URL to capture.",
+          "example": "https://example.com/article"
+        },
+        {
+          "key": "max_body",
+          "type": "number",
+          "arity": "value",
+          "control": "slider",
+          "ui": {
+            "label": "Max body chars",
+            "control": "slider",
+            "group": "Content"
+          },
+          "flag": "--max-body",
+          "default": 280,
+          "min": 80,
+          "max": 600,
+          "step": 10,
+          "hint": "Body character budget."
+        },
+        {
+          "key": "max_heading",
+          "type": "number",
+          "arity": "value",
+          "control": "slider",
+          "ui": {
+            "label": "Max heading chars",
+            "control": "slider",
+            "group": "Content"
+          },
+          "flag": "--max-heading",
+          "default": 120,
+          "min": 40,
+          "max": 200,
+          "step": 10,
+          "hint": "Heading character budget."
+        }
+      ],
+      "hint": "Capture an article/page into editable card content.",
+      "help": "Fetches a URL (Chrome / Jina, daily-driver) and structures it into a reviewable card.content JSON (heading/body/footer/image/citation) you edit before rendering the card overlay."
+    },
+    {
+      "id": "overlay.render",
+      "step": "overlay",
+      "label": "Render overlays",
+      "subcommand": "overlay-render",
+      "optional": true,
+      "consumes": [
+        "overlay.def",
+        "base",
+        "safezone.def"
+      ],
+      "produces": [
+        "overlay.composite",
+        "overlay.occupancy"
+      ],
+      "io": [
+        {
+          "artifact": "overlay.def",
+          "role": "input",
+          "via": "positional",
+          "order": 0
+        },
+        {
+          "artifact": "base",
+          "role": "input",
+          "via": "flag",
+          "flag": "-i"
+        },
+        {
+          "artifact": "overlay.composite",
+          "role": "output",
+          "via": "flag",
+          "flag": "-o"
+        },
+        {
+          "artifact": "safezone.def",
+          "role": "input",
+          "via": "flag",
+          "flag": "--safezone"
+        },
+        {
+          "artifact": "overlay.occupancy",
+          "role": "output",
+          "via": "flag",
+          "flag": "--occupancy"
+        }
+      ],
+      "params": [
+        {
+          "key": "crf",
+          "type": "number",
+          "arity": "value",
+          "control": "slider",
+          "ui": {
+            "label": "Quality (CRF)",
+            "control": "slider",
+            "group": "Render"
+          },
+          "flag": "--crf",
+          "default": 18,
+          "min": 0,
+          "max": 51,
+          "step": 1,
+          "hint": "x264 quality (lower = better)."
+        },
+        {
+          "key": "dry_run",
+          "type": "bool",
+          "arity": "switch",
+          "control": "toggle",
+          "ui": {
+            "label": "Dry run",
+            "control": "toggle",
+            "group": "Render"
+          },
+          "flag": "--dry-run",
+          "default": false,
+          "hint": "Show the ffmpeg command without rendering."
+        }
+      ],
+      "hint": "Composite the placed/timed overlays + emit occupancy.",
+      "help": "Reads the (edited) overlay.def, places/scales/times each overlay over the base, and writes the preview composite + the overlay.occupancy descriptor (frame size from the safe-zone spec). Re-runnable after editing overlay.def."
     },
     {
       "id": "composite",
@@ -1447,12 +1686,12 @@
         }
       ],
       "hint": "Flatten base + overlay layers into review/composite.mp4.",
-      "help": "Stacks the layers bottom-to-top by z-order (base, then the caption overlay + any future overlays) into one previewable .mp4 — the in-app preview of the assembled result and the guide track the editor handoffs carry on top. QC advises but never blocks it. A review/handoff intermediate, not your final cut."
+      "help": "Stacks the layers bottom-to-top by z-order (base, then the caption overlay + any future overlays) into one previewable .mp4 \u2014 the in-app preview of the assembled result and the guide track the editor handoffs carry on top. QC advises but never blocks it. A review/handoff intermediate, not your final cut."
     },
     {
       "id": "export.premiere",
       "step": "output",
-      "label": "Export — Premiere Pro",
+      "label": "Export \u2014 Premiere Pro",
       "subcommand": "export premiere",
       "optional": true,
       "consumes": [
@@ -1515,13 +1754,13 @@
           "hint": "Sequence frame rate."
         }
       ],
-      "hint": "FCP7 XML (XMEML) — opens in Premiere Pro.",
+      "hint": "FCP7 XML (XMEML) \u2014 opens in Premiere Pro.",
       "help": "Assembles the base cut (the decision's KEEP segments over the reframed-uncut clip, as trimmable clips) + caption track + the composite as a disabled top guide track, as FCP7/XMEML XML. Premiere does not import FCPXML, so this is its dedicated target."
     },
     {
       "id": "export.fcpx",
       "step": "output",
-      "label": "Export — Final Cut / Resolve",
+      "label": "Export \u2014 Final Cut / Resolve",
       "subcommand": "export fcpxml",
       "optional": true,
       "consumes": [
@@ -1597,13 +1836,13 @@
           "hint": "FCPXML event name."
         }
       ],
-      "hint": "FCPXML 1.10 — Final Cut Pro / DaVinci Resolve.",
+      "hint": "FCPXML 1.10 \u2014 Final Cut Pro / DaVinci Resolve.",
       "help": "The same timeline (base cut + captions + composite guide) serialized as FCPXML 1.10 for Final Cut Pro and DaVinci Resolve."
     },
     {
       "id": "export.capcut",
       "step": "output",
-      "label": "Export — CapCut",
+      "label": "Export \u2014 CapCut",
       "subcommand": "export capcut",
       "optional": true,
       "consumes": [
@@ -1685,7 +1924,7 @@
       "path": "work/roughcut.decision.yml",
       "previewable": false,
       "hint": "Editable cut decision file.",
-      "help": "The product of the rough-cut step — one scannable KEEP/DROP line per segment. Hand-edit it, then roughcut.render applies it."
+      "help": "The product of the rough-cut step \u2014 one scannable KEEP/DROP line per segment. Hand-edit it, then roughcut.render applies it."
     },
     {
       "id": "caption.def",
@@ -1703,7 +1942,7 @@
       "z_order": 30,
       "codec_hint": "hevc-alpha",
       "hint": "Styled caption overlay (transparent).",
-      "help": "The rendered caption layer the NLE stacks on top. Transparent HEVC-alpha — not previewed directly (the webview can't be relied on to decode alpha); the caption.preview proxy is its previewable form."
+      "help": "The rendered caption layer the NLE stacks on top. Transparent HEVC-alpha \u2014 not previewed directly (the webview can't be relied on to decode alpha); the caption.preview proxy is its previewable form."
     },
     {
       "id": "caption.preview",
@@ -1713,7 +1952,41 @@
       "z_order": 30,
       "codec_hint": "h264",
       "hint": "Caption layer over a checkerboard (preview).",
-      "help": "The caption overlay baked over a neutral checkerboard into plain h264 so the previewer can play it in isolation. A GUI-only proxy — never bundled into an editor export."
+      "help": "The caption overlay baked over a neutral checkerboard into plain h264 so the previewer can play it in isolation. A GUI-only proxy \u2014 never bundled into an editor export."
+    },
+    {
+      "id": "overlay.def",
+      "kind": "manifest",
+      "path": "work/overlay.def.yml",
+      "previewable": false,
+      "hint": "Editable overlay decision file.",
+      "help": "One line per overlay (kind, src, source-time window, placement, transition). The product \u2014 hand-edit before rendering, mirrors roughcut.def / caption.def."
+    },
+    {
+      "id": "card.content",
+      "kind": "manifest",
+      "path": "work/card.content.json",
+      "previewable": false,
+      "hint": "Editable source-card content.",
+      "help": "heading / body / footer / image / citation captured from a URL. Reviewable JSON the card overlay renders from."
+    },
+    {
+      "id": "overlay.occupancy",
+      "kind": "descriptor",
+      "path": "work/overlay.occupancy.json",
+      "previewable": false,
+      "hint": "Overlay footprints + windows.",
+      "help": "The rect + time window each overlay occupies. A descriptor: caption placement dodges it and QC flags intrusions; no branch reads another's pixels."
+    },
+    {
+      "id": "overlay.composite",
+      "kind": "media",
+      "path": "review/overlay-composite.mp4",
+      "previewable": true,
+      "z_order": 90,
+      "codec_hint": "h264",
+      "hint": "Base + placed/timed overlays (preview).",
+      "help": "The base with the overlay layers placed/timed/faded into one previewable .mp4. A review intermediate, not the final cut."
     },
     {
       "id": "qc.report",
@@ -1731,7 +2004,7 @@
       "z_order": 100,
       "codec_hint": "h264",
       "hint": "Flattened preview of all layers.",
-      "help": "The base + caption/overlay layers composited into one .mp4 — the in-app 'assembled result' preview and the muted guide track the editor handoffs include on top (highest z-order). A preview/handoff intermediate in review/, not the final cut (that is render/, yours from the NLE)."
+      "help": "The base + caption/overlay layers composited into one .mp4 \u2014 the in-app 'assembled result' preview and the muted guide track the editor handoffs include on top (highest z-order). A preview/handoff intermediate in review/, not the final cut (that is render/, yours from the NLE)."
     },
     {
       "id": "export.premiere",

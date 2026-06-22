@@ -474,6 +474,111 @@
         "--safezone",
         "work/safezone.json"
       ]
+    },
+    {
+      "name": "overlay_define",
+      "task": "overlay.define",
+      "form_values": {
+        "profile": "reels-9x16",
+        "source": "reel"
+      },
+      "artifact_paths": {
+        "overlay.def": "work/overlay.def.yml"
+      },
+      "argv": [
+        "video-pipeline",
+        "overlay",
+        "--profile",
+        "reels-9x16",
+        "--source",
+        "reel",
+        "-o",
+        "work/overlay.def.yml"
+      ]
+    },
+    {
+      "name": "overlay_card",
+      "task": "overlay.card",
+      "form_values": {
+        "url": "https://example.com/article",
+        "max_body": 280,
+        "max_heading": 120
+      },
+      "artifact_paths": {
+        "card.content": "work/card.content.json"
+      },
+      "argv": [
+        "video-pipeline",
+        "overlay-card",
+        "https://example.com/article",
+        "--max-body",
+        "280",
+        "--max-heading",
+        "120",
+        "-o",
+        "work/card.content.json"
+      ]
+    },
+    {
+      "name": "overlay_render",
+      "task": "overlay.render",
+      "form_values": {
+        "crf": 18,
+        "dry_run": false
+      },
+      "artifact_paths": {
+        "overlay.def": "work/overlay.def.yml",
+        "base": "work/base.mp4",
+        "overlay.composite": "review/overlay-composite.mp4",
+        "safezone.def": "work/safezone.json",
+        "overlay.occupancy": "work/overlay.occupancy.json"
+      },
+      "argv": [
+        "video-pipeline",
+        "overlay-render",
+        "work/overlay.def.yml",
+        "--crf",
+        "18",
+        "-i",
+        "work/base.mp4",
+        "-o",
+        "review/overlay-composite.mp4",
+        "--safezone",
+        "work/safezone.json",
+        "--occupancy",
+        "work/overlay.occupancy.json"
+      ]
+    },
+    {
+      "name": "overlay_render_dryrun",
+      "task": "overlay.render",
+      "form_values": {
+        "crf": 20,
+        "dry_run": true
+      },
+      "artifact_paths": {
+        "overlay.def": "work/overlay.def.yml",
+        "base": "work/base.mp4",
+        "overlay.composite": "review/overlay-composite.mp4",
+        "safezone.def": "work/safezone.json",
+        "overlay.occupancy": "work/overlay.occupancy.json"
+      },
+      "argv": [
+        "video-pipeline",
+        "overlay-render",
+        "work/overlay.def.yml",
+        "--crf",
+        "20",
+        "--dry-run",
+        "-i",
+        "work/base.mp4",
+        "-o",
+        "review/overlay-composite.mp4",
+        "--safezone",
+        "work/safezone.json",
+        "--occupancy",
+        "work/overlay.occupancy.json"
+      ]
     }
   ]
 }
