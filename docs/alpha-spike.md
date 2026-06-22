@@ -1,5 +1,13 @@
 # Alpha-in-`<video>` de-risk spike
 
+> **Resolution (superseded).** This risk was designed around rather than bet on:
+> the pipeline bakes each transparent layer over a checkerboard into an opaque
+> **h264 proxy** (the `proxy` step → `*.preview.mp4`, e.g. `caption.preview`;
+> overlays preview via the h264 `overlay-composite`), and the alpha `.mov` layers
+> are marked non-previewable. The previewer therefore only plays opaque h264 and no
+> longer depends on webview alpha decoding at all. Kept for history; the spike
+> below is no longer a gate.
+
 **Question:** can the OS webview (WKWebView on macOS) play a **transparent
 HEVC-with-alpha** layer, alone, in a plain `<video>` element — against a
 checkerboard backdrop — clearly enough that a caption overlay reads
