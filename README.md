@@ -12,8 +12,10 @@ are two views of the same truth. Real editing happens downstream in your NLE
 CLI already automates and gives it a glass-box front end.
 
 > **Status:** early / experimental. Mac-first. `schema_version` 0.1.0. The schema
-> grammar is still moving; see [the repo-topology note](#repository-topology) and
-> [`docs/alpha-spike.md`](docs/alpha-spike.md) for the one residual engine risk.
+> grammar is still moving; see [the repo-topology note](#repository-topology). The
+> one early engine risk — the webview decoding transparent HEVC-with-alpha — was
+> designed around with baked h264 preview proxies; see
+> [Transparent-layer preview](#transparent-layer-preview).
 
 ## Design tenets
 
@@ -69,7 +71,10 @@ Two pieces carry most of the engineering weight:
   artifacts and the composite. No canvas, no multi-file sync. Playhead and
   play-state are preserved across swaps, so switching layers feels like flipping
   channels on one timeline. Available sources are the schema's previewable
-  artifacts intersected with the files actually present on disk.
+  artifacts intersected with the files actually present on disk. Transparent
+  layers preview as opaque h264 proxies (see
+  [Transparent-layer preview](#transparent-layer-preview)), so the element never
+  depends on the webview decoding alpha.
 
 ## The schema contract
 
@@ -120,7 +125,7 @@ tests/
   fixtures/sample-schema.json   a real emitted schema instance
 docs/
   architecture.md          public condensation of the design
-  alpha-spike.md           the one residual engine-risk runbook
+  alpha-spike.md           the alpha-in-webview spike (superseded — see Transparent-layer preview)
 ```
 
 ## Build & run
@@ -192,7 +197,7 @@ npm run tauri dev
 ```
 
 For the full Mac-side build, test, and acceptance sequence (everything that needs
-a real toolchain, the webview, and the alpha spike, mapped to the DoD), follow
+a real toolchain and the webview, mapped to the DoD), follow
 [`docs/mac-build-runbook.md`](docs/mac-build-runbook.md).
 
 ## Repository topology
@@ -218,12 +223,19 @@ to keep that move cheap:
    and renders it — written while the two live together, kept as the honesty check
    once they are apart.
 
-## Known limitation
+## Transparent-layer preview
 
-The previewer's ability to play a **transparent** layer in isolation depends on
-the OS webview decoding HEVC-with-alpha in a plain `<video>` element. This is the
-one engine-dependent behavior in the design and is gated behind a de-risk spike
-before the relevant previewer phase is built. See
+Previewing a **transparent** layer in isolation (the HEVC-with-alpha caption
+overlay) was the one engine-dependent risk in the original design — it would have
+required the OS webview to decode alpha in a plain `<video>`. The design resolves
+it by **not depending on that at all**: the pipeline bakes each transparent layer
+over a neutral checkerboard into a plain **h264 proxy** (the `proxy` step →
+`*.preview.mp4`, e.g. `caption.preview`; overlays preview via the h264
+`overlay-composite`). The alpha layers themselves are marked non-previewable, so
+the previewer only ever plays opaque h264 sources and isolated-layer preview works
+on any webview with no codec dependency.
+
+The original de-risk spike — now mooted by this approach — is kept for history in
 [`docs/alpha-spike.md`](docs/alpha-spike.md).
 
 ## Troubleshooting
