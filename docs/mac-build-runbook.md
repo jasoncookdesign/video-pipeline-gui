@@ -89,17 +89,20 @@ step/param forms render with the resolved-`argv` preview visible. → DoD: *form
 generate from schema; logs stream with resolved argv shown*. **Report:** build
 exit status + a one-line confirmation the window renders the form.
 
-## Step 4 — Alpha spike (gates the previewer)
+## Step 4 — Transparent-layer preview (resolved; verify the proxy path)
 
-Follow [`docs/alpha-spike.md`](alpha-spike.md) end to end. This is the one
-engine-dependent behavior in the whole design: whether WKWebView plays a
-transparent HEVC-with-alpha layer in a bare `<video>`.
+The previewer does **not** rely on WKWebView decoding transparent HEVC-with-alpha
+— that early engine risk was designed around. The pipeline bakes each transparent
+layer over a checkerboard into an opaque **h264 proxy** (the `proxy` step →
+`*.preview.mp4`, e.g. `caption.preview`; overlays preview via the h264
+`overlay-composite`), and the alpha `.mov` layers are marked non-previewable, so
+the previewer only ever plays opaque h264. The original spike is kept for history
+in [`docs/alpha-spike.md`](alpha-spike.md) and is no longer a gate.
 
-**Pass / decide:** record the spike result. If it passes, the previewer's alpha
-path is cleared. If it fails, take the documented fallback (checkerboard composite
-or a flattened-preview path) and record the decision. → DoD: *previewer switches
-layers with playhead preserved (alpha spike passed, or a documented fallback
-decided)*. **Report:** pass/fail + the chosen path.
+**Verify:** select a transparent layer's preview proxy (e.g. `caption.preview`) and
+confirm it plays over the checkerboard with the overlay reading clearly. → DoD:
+*previewer switches layers with playhead preserved.* **Report:** a one-line
+confirmation the proxy preview plays.
 
 ## Step 5 — Acceptance walkthrough (the observable DoD items)
 
@@ -121,7 +124,7 @@ checkboxes that no automated test can assert.
 
 ## Reporting back
 
-Paste the `cargo test` summary, the `contract:` lines, the spike result, and the
-Step-5 walkthrough notes into the session handoff so the President Agent can check
+Paste the `cargo test` summary, the `contract:` lines, the proxy-preview check, and
+the Step-5 walkthrough notes into the session handoff so the President Agent can check
 the DoD off against observed evidence (not shipped artifacts) before INI-087 is
 moved to Done.

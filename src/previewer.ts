@@ -5,16 +5,17 @@
 //   (a) Playhead/play-state preservation: capture currentTime + paused BEFORE a
 //       src swap and restore on 'loadeddata' (re-seek; resume if it was playing).
 //   (b) A global 0.0–1.0 volume coefficient slider that sets video.volume.
-//   (c) A checkerboard/black backdrop behind the <video> so a transparent (alpha)
-//       layer reads unambiguously.
-// Layers are sorted by z_order. The ALPHA case (caption overlay, HEVC-alpha) is
-// gated on a WKWebView spike — until that lands, transparent playback in the
-// Tauri webview is unverified; the checkerboard makes any alpha support visible.
+//   (c) A checkerboard/black backdrop behind the <video> — a defensive fallback;
+//       transparent layers are not played directly (see the note below).
+// Layers are sorted by z_order.
 //
-// NOTE (WKWebView alpha spike): macOS WKWebView's HEVC-with-alpha support in the
-// Tauri webview is unproven. This module renders the alpha layer the same way;
-// if the webview composites alpha, the checkerboard shows through. If not, the
-// spike's outcome will dictate a fallback (e.g. backend pre-composite preview).
+// NOTE (transparent layers): the previewer only ever plays OPAQUE h264 sources.
+// The pipeline bakes each transparent layer (the HEVC-alpha caption overlay) over
+// a checkerboard into an h264 proxy (the `proxy` step → `*.preview.mp4`, e.g.
+// `caption.preview`; overlays preview via the h264 `overlay-composite`), and the
+// alpha `.mov` layers are marked non-previewable. So this module never depends on
+// the webview decoding alpha — the earlier WKWebView alpha spike is superseded
+// (see docs/alpha-spike.md).
 
 import { ipc } from "./ipc";
 import type { Artifact, Schema } from "./types";
