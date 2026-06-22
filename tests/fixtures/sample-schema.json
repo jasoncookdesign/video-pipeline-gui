@@ -27,8 +27,8 @@
       "label": "Reframe",
       "order": 30,
       "optional": true,
-      "hint": "Landscape -> portrait reframe.",
-      "help": "Tracks the subject and crops the source to the target portrait frame. Skippable when the source is already in-aspect."
+      "hint": "Reframe the source to the target format.",
+      "help": "Tracks the subject and crops the source to the target format — portrait, square, or landscape. Skippable when the source is already in-aspect."
     },
     {
       "id": "roughcut",
@@ -335,7 +335,7 @@
     {
       "id": "reframe",
       "step": "reframe",
-      "label": "Reframe to portrait",
+      "label": "Reframe to target format",
       "subcommand": "reframe",
       "optional": true,
       "consumes": [
@@ -443,7 +443,7 @@
           "help": "Computes and prints the crop plan but writes no video \u2014 fast way to sanity-check tracking before a full render."
         }
       ],
-      "hint": "Crop landscape source to the portrait frame.",
+      "hint": "Crop the source to the target format (portrait, square, or landscape).",
       "help": "Subject-tracking crop. Static holds one crop; dynamic follows the subject. Daily-driver path needs MediaPipe; --dry-run plans without rendering."
     },
     {
