@@ -94,6 +94,13 @@ def _truthy(v) -> bool:
     return True
 
 
+def _row_scalar(v):
+    """Render a row field value into its `key=value` token (mirror command.rs)."""
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    return str(v)
+
+
 def resolve_argv_port(schema, task_id, form_values=None, artifact_paths=None):
     form_values = form_values or {}
     artifact_paths = artifact_paths or {}
@@ -129,6 +136,20 @@ def resolve_argv_port(schema, task_id, form_values=None, artifact_paths=None):
         if arity == "switch":
             if _truthy(val) and p.get("flag") is not None:
                 argv.append(p["flag"])
+        elif arity == "rows":
+            # one `flag spec` per non-empty row; spec = the row's `key=value;…`
+            # (mirror of command.rs::resolve_argv / assemble.py / ipc.ts).
+            for row in (val or []):
+                if not isinstance(row, dict):
+                    continue
+                parts = []
+                for rf in p.get("row", []):
+                    v = row.get(rf["key"])
+                    if v is None or v == "":
+                        continue
+                    parts.append(f"{rf['key']}={_row_scalar(v)}")
+                if parts and p.get("flag") is not None:
+                    argv.extend([p["flag"], ";".join(parts)])
         elif arity == "value":
             tok = _token(val)
             if tok is not None:

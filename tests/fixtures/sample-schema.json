@@ -1430,18 +1430,6 @@
           "example": "--profile reels-9x16"
         },
         {
-          "key": "source",
-          "type": "string",
-          "arity": "value",
-          "control": "field",
-          "ui": {
-            "label": "Source name",
-            "group": "Setup"
-          },
-          "flag": "--source",
-          "hint": "Base clip name recorded in the file (advisory)."
-        },
-        {
           "key": "transcript",
           "type": "path",
           "arity": "value",
@@ -1452,17 +1440,141 @@
           },
           "flag": "--transcript",
           "hint": "Word-level transcript JSON for window proposing.",
-          "help": "When given, an overlay's window can be proposed from the span where its subject is discussed (the AI-leverage step).",
+          "help": "When given, an overlay row's window can be proposed from the span where its subject is discussed (fill the row's 'at' field with a phrase). The AI-leverage step; the LLM never touches the render path.",
           "path": {
             "kind": "file",
             "extensions": [
               "json"
             ]
           }
+        },
+        {
+          "key": "source",
+          "type": "string",
+          "arity": "value",
+          "control": "field",
+          "ui": {
+            "label": "Source label",
+            "group": "Advanced"
+          },
+          "flag": "--source",
+          "hint": "Base clip name recorded in the file header (advisory).",
+          "help": "A label written into the file's `source:` header for reference. Not the asset and not the base video \u2014 the base is supplied at render time (Render overlays \u2192 base video)."
+        },
+        {
+          "key": "overlays",
+          "type": "string",
+          "arity": "rows",
+          "control": "rows",
+          "ui": {
+            "label": "Overlays",
+            "group": "Overlays"
+          },
+          "flag": "--add",
+          "hint": "The overlays to place \u2014 one row each.",
+          "help": "Each row is one overlay. Pick a Kind, point it at an asset path (Src), set its on-screen window (Start/End seconds, or a Discussed phrase with a Transcript loaded), and choose a Placement (full-bleed / bottom-half / a PiP rect). A video can duck or mute its own audio. Each row emits one --add entry.",
+          "row": [
+            {
+              "key": "kind",
+              "label": "Kind",
+              "control": "dropdown",
+              "options": [
+                "image",
+                "video",
+                "card"
+              ],
+              "default": "image",
+              "hint": "image = still; video = clip; card = generated source card."
+            },
+            {
+              "key": "src",
+              "label": "Src (asset path)",
+              "control": "field",
+              "hint": "Path to the image/video asset (or the rendered card).",
+              "placeholder": "assets/chart.png"
+            },
+            {
+              "key": "at",
+              "label": "Discussed phrase",
+              "control": "field",
+              "hint": "Propose the window from where this is discussed.",
+              "placeholder": "the Q3 chart  (needs a Transcript)"
+            },
+            {
+              "key": "start",
+              "label": "Start (s)",
+              "control": "field",
+              "hint": "Explicit window start, source-time seconds.",
+              "placeholder": "3.2"
+            },
+            {
+              "key": "end",
+              "label": "End (s)",
+              "control": "field",
+              "hint": "Explicit window end, source-time seconds.",
+              "placeholder": "7.8"
+            },
+            {
+              "key": "placement",
+              "label": "Placement",
+              "control": "dropdown",
+              "options": [
+                "full-bleed",
+                "bottom-half",
+                "pip-rect"
+              ],
+              "default": "full-bleed",
+              "hint": "Where it sits; pip-rect needs a Rect."
+            },
+            {
+              "key": "rect",
+              "label": "PiP rect (x,y,w,h)",
+              "control": "field",
+              "hint": "Pixel rect for placement = pip-rect.",
+              "placeholder": "60,1180,420,560"
+            },
+            {
+              "key": "transition",
+              "label": "Transition",
+              "control": "dropdown",
+              "options": [
+                "cut",
+                "fade"
+              ],
+              "default": "cut",
+              "hint": "Hard cut or a fade in/out."
+            },
+            {
+              "key": "fade",
+              "label": "Fade (s)",
+              "control": "field",
+              "hint": "Fade duration when Transition = fade.",
+              "placeholder": "0.3"
+            },
+            {
+              "key": "audio",
+              "label": "Audio (video)",
+              "control": "dropdown",
+              "options": [
+                "keep",
+                "duck",
+                "mute"
+              ],
+              "default": "keep",
+              "hint": "A video overlay's own audio."
+            },
+            {
+              "key": "text",
+              "label": "Label",
+              "control": "field",
+              "hint": "A human label recorded with the overlay.",
+              "placeholder": "what it shows"
+            }
+          ]
         }
       ],
-      "hint": "Scaffold / author the editable overlay decision file.",
-      "help": "Writes overlay.def \u2014 one scannable line per overlay (kind, src, window, placement, transition). Hand-edit it (or pass --transcript to propose each window from the spoken span), then render."
+      "hint": "Add one or more overlays \u2014 image, video, or source card.",
+      "help": "Writes overlay.def \u2014 one line per overlay (kind, src, window, placement, transition). Add overlays in the Overlays table below; each row becomes a --add entry. Set a window explicitly (start/end) or let it be proposed from the spoken span (a phrase in 'at' + a Transcript). You can also hand-edit the file afterward, then render."
     },
     {
       "id": "overlay.card",

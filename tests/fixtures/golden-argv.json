@@ -579,6 +579,47 @@
         "--occupancy",
         "work/overlay.occupancy.json"
       ]
+    },
+    {
+      "name": "overlay_define_rows",
+      "task": "overlay.define",
+      "form_values": {
+        "profile": "reels-9x16",
+        "overlays": [
+          {
+            "kind": "image",
+            "src": "assets/chart.png",
+            "start": "3.2",
+            "end": "7.8",
+            "placement": "bottom-half",
+            "transition": "fade",
+            "fade": "0.3"
+          },
+          {
+            "kind": "video",
+            "src": "b.mov",
+            "at": "the demo",
+            "placement": "pip-rect",
+            "rect": "60,1180,420,560",
+            "audio": "duck"
+          }
+        ]
+      },
+      "artifact_paths": {
+        "overlay.def": "work/overlay.def.yml"
+      },
+      "argv": [
+        "video-pipeline",
+        "overlay",
+        "--profile",
+        "reels-9x16",
+        "--add",
+        "kind=image;src=assets/chart.png;start=3.2;end=7.8;placement=bottom-half;transition=fade;fade=0.3",
+        "--add",
+        "kind=video;src=b.mov;at=the demo;placement=pip-rect;rect=60,1180,420,560;audio=duck",
+        "-o",
+        "work/overlay.def.yml"
+      ]
     }
   ]
 }

@@ -6,7 +6,7 @@
 // keyed "taskId.paramKey" via the store. No assembly logic lives here (that's
 // command.ts); this module only collects values and notifies on change.
 
-import type { Param, Task, ControlKind, Compose, ComposePart } from "./types";
+import type { Param, Task, ControlKind, Compose, ComposePart, RowField } from "./types";
 import { store } from "./state";
 import { pickPath } from "./dialog";
 import type { HelpPanel } from "./help";
@@ -221,6 +221,134 @@ function buildComposite(
   return container;
 }
 
+/**
+ * Build a repeatable rows control (arity="rows"). The value persisted under the
+ * param key is an array of row objects ({fieldKey: value}); argv assembly emits
+ * one `flag key=value;…` per non-empty row (see ipc.ts/command.rs). Each row is a
+ * line of per-column inputs with a Remove button; an "Add" button appends a row
+ * pre-seeded with its dropdown defaults.
+ */
+function buildRows(
+  task: Task,
+  param: Param,
+  notifyChanged: (changedKey?: string) => void,
+): HTMLElement {
+  const container = document.createElement("div");
+  container.className = "rows";
+  const key = stateKey(task, param);
+  const fields: RowField[] = param.row ?? [];
+
+  const stored = store.getFormValue(key);
+  const rows: Record<string, string>[] = Array.isArray(stored)
+    ? (stored as Record<string, string>[]).map((r) => ({ ...r }))
+    : [];
+
+  const persist = (): void => {
+    store.setFormValue(key, rows.length ? rows : null);
+    notifyChanged(key);
+  };
+
+  const list = document.createElement("div");
+  list.className = "rows__list";
+
+  const buildCell = (row: Record<string, string>, rf: RowField): HTMLElement => {
+    const cell = document.createElement("label");
+    cell.className = "rows__cell";
+    if (rf.hint) cell.title = rf.hint;
+    const lab = document.createElement("span");
+    lab.className = "rows__label";
+    lab.textContent = rf.label;
+
+    let el: HTMLInputElement | HTMLSelectElement;
+    if (rf.control === "dropdown") {
+      const sel = document.createElement("select");
+      sel.className = "field__select rows__input";
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = "—";
+      sel.appendChild(blank);
+      for (const opt of rf.options ?? []) {
+        const o = document.createElement("option");
+        o.value = String(opt);
+        o.textContent = String(opt);
+        sel.appendChild(o);
+      }
+      sel.value = row[rf.key] ?? (rf.default != null ? String(rf.default) : "");
+      sel.addEventListener("change", () => {
+        if (sel.value) row[rf.key] = sel.value;
+        else delete row[rf.key];
+        persist();
+      });
+      el = sel;
+    } else {
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.className = "field__field rows__input";
+      if (rf.placeholder) inp.placeholder = rf.placeholder;
+      inp.value = row[rf.key] ?? "";
+      inp.addEventListener("input", () => {
+        if (inp.value) row[rf.key] = inp.value;
+        else delete row[rf.key];
+        persist();
+      });
+      el = inp;
+    }
+    cell.append(lab, el);
+    return cell;
+  };
+
+  const redraw = (): void => {
+    list.innerHTML = "";
+    rows.forEach((row, idx) => {
+      const r = document.createElement("div");
+      r.className = "rows__row";
+      for (const rf of fields) r.appendChild(buildCell(row, rf));
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "rows__del";
+      del.textContent = "Remove";
+      del.title = "Remove this overlay";
+      del.addEventListener("click", () => {
+        rows.splice(idx, 1);
+        persist();
+        redraw();
+      });
+      r.appendChild(del);
+      list.appendChild(r);
+    });
+    if (rows.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "rows__empty";
+      empty.textContent = "No overlays yet — add one below.";
+      list.appendChild(empty);
+    }
+  };
+
+  const newRow = (): Record<string, string> => {
+    const row: Record<string, string> = {};
+    for (const rf of fields) {
+      if (rf.control === "dropdown" && rf.default != null) {
+        row[rf.key] = String(rf.default);
+      }
+    }
+    return row;
+  };
+
+  const add = document.createElement("button");
+  add.type = "button";
+  add.className = "rows__add";
+  add.textContent = "+ Add overlay";
+  add.addEventListener("click", () => {
+    rows.push(newRow());
+    persist();
+    redraw();
+  });
+
+  container.append(list, add);
+  redraw();
+  return container;
+}
+
 /** Build a single labelled control for a param. */
 function buildControl(
   task: Task,
@@ -266,6 +394,21 @@ function buildControl(
 
   if (param.compose) {
     input = buildComposite(task, param, param.compose, notifyChanged);
+    input.classList.add("field__input");
+    wrapper.append(label, input);
+    return {
+      wrapper,
+      refreshVisibility: () => {
+        wrapper.hidden = false;
+      },
+    };
+  }
+
+  // Repeatable structured rows (arity="rows"): a table of overlays, each row one
+  // --add entry. Spans the form width rather than sitting in the label/input grid.
+  if (param.arity === "rows" && param.row) {
+    wrapper.classList.add("field--rows");
+    input = buildRows(task, param, notifyChanged);
     input.classList.add("field__input");
     wrapper.append(label, input);
     return {

@@ -685,3 +685,38 @@ code, .mono { font-family: var(--mono); }
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 6px; }
 *::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- repeatable rows control (arity="rows", e.g. overlays) ---------- */
+.field--rows { display: block; }
+.field--rows > .field__input { width: 100%; }
+.rows { display: flex; flex-direction: column; gap: 8px; }
+.rows__list { display: flex; flex-direction: column; gap: 8px; }
+.rows__row {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end;
+  padding: 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg-sunken);
+}
+.rows__cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 12ch; }
+.rows__label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--text-dim);
+}
+.rows__input {
+  font-size: 12.5px; height: 30px; line-height: 18px; box-sizing: border-box;
+  width: 100%;
+}
+.rows__del {
+  flex: 0 0 auto; height: 30px; align-self: flex-end;
+  background: var(--bg-sunken); border: 1px solid var(--border-strong);
+  color: var(--text-dim); border-radius: 6px; padding: 0 10px; cursor: pointer;
+  font-size: 12px;
+}
+.rows__del:hover { border-color: var(--accent); color: var(--text); }
+.rows__add {
+  align-self: flex-start;
+  background: var(--bg-sunken); border: 1px solid var(--border-strong);
+  color: var(--text); border-radius: 6px; padding: 6px 12px; cursor: pointer;
+  font-size: 12.5px;
+}
+.rows__add:hover { border-color: var(--accent); }
+.rows__empty { color: var(--text-faint); font-size: 12.5px; margin: 2px 0; }
