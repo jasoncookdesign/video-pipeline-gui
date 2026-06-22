@@ -60,7 +60,7 @@
       "order": 65,
       "optional": true,
       "hint": "Timed/placed content overlays (image / video / source card).",
-      "help": "Places content overlays \u2014 a still, a video asset, or a generated article card \u2014 on a source-time window proposed from the transcript, as an editable overlay.def. Renders the placed/timed composite and emits overlay.occupancy so captions dodge overlays and QC stays aware."
+      "help": "Places content overlays — a still, a video asset, or a generated article card — on a source-time window proposed from the transcript, as an editable overlay.def. Renders the placed/timed composite and emits overlay.occupancy so captions dodge overlays and QC stays aware."
     },
     {
       "id": "composite",
@@ -68,7 +68,7 @@
       "order": 70,
       "optional": true,
       "hint": "Flatten the layers into one preview render.",
-      "help": "Stacks the base and the caption/overlay layers into a single previewable video \u2014 the in-app preview of the assembled result and the guide track the editor handoffs carry on top. A review/handoff intermediate, not the final cut (that is yours, from your NLE)."
+      "help": "Stacks the base and the caption/overlay layers into a single previewable video — the in-app preview of the assembled result and the guide track the editor handoffs carry on top. A review/handoff intermediate, not the final cut (that is yours, from your NLE)."
     },
     {
       "id": "output",
@@ -131,7 +131,7 @@
                 "key": "hook",
                 "label": "Hook",
                 "control": "field",
-                "hint": "A short description \u2014 becomes the render-file slug.",
+                "hint": "A short description — becomes the render-file slug.",
                 "placeholder": "short description"
               }
             ]
@@ -148,7 +148,7 @@
           },
           "flag": "--source",
           "hint": "Source video to ingest.",
-          "help": "Pick the source clip. On run it is copied into the project \u2014 archived in source/ and seeded as the base layer (work/base.mp4) \u2014 so the reframe / rough-cut steps have their input. Browse or drag a file onto the field.",
+          "help": "Pick the source clip. On run it is copied into the project — archived in source/ and seeded as the base layer (work/base.mp4) — so the reframe / rough-cut steps have their input. Browse or drag a file onto the field.",
           "path": {
             "kind": "file",
             "extensions": [
@@ -343,7 +343,8 @@
       ],
       "produces": [
         "base",
-        "reframed"
+        "reframed",
+        "subject.occupancy"
       ],
       "io": [
         {
@@ -363,31 +364,82 @@
           "role": "output",
           "via": "flag",
           "flag": "--reframed-out"
+        },
+        {
+          "artifact": "subject.occupancy",
+          "role": "output",
+          "via": "flag",
+          "flag": "--occupancy-out"
         }
       ],
       "params": [
         {
-          "key": "profile",
+          "key": "aspect",
           "type": "enum",
           "arity": "value",
           "control": "dropdown",
           "ui": {
-            "label": "Profile",
+            "label": "Aspect",
             "control": "dropdown",
-            "group": "Output"
+            "group": "Format"
           },
-          "flag": "--profile",
-          "default": "reels-9x16",
+          "flag": "--aspect",
+          "default": "full-portrait",
           "options": [
-            "reels-9x16",
-            "story-9x16",
-            "feed-portrait-4x5",
-            "feed-square-1x1",
-            "feed-landscape-16x9"
+            "cinematic",
+            "classic-tv",
+            "full-portrait",
+            "portrait",
+            "square",
+            "wide-portrait",
+            "widescreen"
           ],
-          "hint": "Output aspect/dimensions preset.",
-          "help": "The target frame. reels-9x16 (1080x1920) is the default for vertical Reels; the feed-* presets cover 4:5, 1:1, and 16:9. Drives crop math and safe-zone derivation.",
-          "example": "--profile reels-9x16"
+          "hint": "Target shape (aspect preset).",
+          "help": "The output shape. full-portrait (9:16) is the short-form default; also portrait (2:3), wide-portrait (4:5), square (1:1), widescreen (16:9), cinematic (21:9), classic-tv (4:3). Drives the crop geometry.",
+          "example": "--aspect full-portrait"
+        },
+        {
+          "key": "resolution",
+          "type": "enum",
+          "arity": "value",
+          "control": "dropdown",
+          "ui": {
+            "label": "Resolution",
+            "control": "dropdown",
+            "group": "Format"
+          },
+          "flag": "--resolution",
+          "default": "auto",
+          "options": [
+            "auto",
+            "4k",
+            "1440p",
+            "1080p",
+            "720p"
+          ],
+          "hint": "Resolution tier, or Auto.",
+          "help": "Auto picks the highest tier that fits the crop without upscaling beyond 5%; or force 4k / 1440p / 1080p / 720p. Separate from aspect.",
+          "example": "--resolution auto"
+        },
+        {
+          "key": "framing",
+          "type": "enum",
+          "arity": "value",
+          "control": "dropdown",
+          "ui": {
+            "label": "Framing",
+            "control": "dropdown",
+            "group": "Format"
+          },
+          "flag": "--framing",
+          "options": [
+            "performer",
+            "talking-head",
+            "wide-context"
+          ],
+          "hint": "Composition intent (optional).",
+          "help": "performer = widest crop, face high, lower band kept for torso/props and captions; talking-head = zoomed on the face; wide-context = scene kept, subject centred. Leave unset for the legacy centred crop.",
+          "example": "--framing performer"
         },
         {
           "key": "mode",
@@ -428,6 +480,40 @@
           "help": "opencv is dependency-light; mediapipe is the higher-quality daily-driver face/pose tracker."
         },
         {
+          "key": "scale",
+          "type": "number",
+          "arity": "value",
+          "control": "slider",
+          "ui": {
+            "label": "Scale (override)",
+            "control": "slider",
+            "group": "Framing"
+          },
+          "flag": "--scale",
+          "min": 0.3,
+          "max": 1.0,
+          "step": 0.05,
+          "hint": "Crop tightness override (optional).",
+          "help": "Overrides the framing intent's crop tightness. 1.0 = widest native crop; lower zooms in. Leave unset to let Framing decide. (Pulling back wider than native is not yet supported.)"
+        },
+        {
+          "key": "subject_y",
+          "type": "number",
+          "arity": "value",
+          "control": "slider",
+          "ui": {
+            "label": "Subject Y (override)",
+            "control": "slider",
+            "group": "Framing"
+          },
+          "flag": "--subject-y",
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "hint": "Vertical anchor override (optional).",
+          "help": "Overrides where the subject sits vertically (0=top, 1=bottom). Only bites when the crop is shorter than the source. Leave unset to let Framing decide."
+        },
+        {
           "key": "dry_run",
           "type": "bool",
           "arity": "switch",
@@ -440,7 +526,7 @@
           "flag": "--dry-run",
           "default": false,
           "hint": "Plan the crop without rendering.",
-          "help": "Computes and prints the crop plan but writes no video \u2014 fast way to sanity-check tracking before a full render."
+          "help": "Computes and prints the crop plan but writes no video — fast way to sanity-check tracking before a full render."
         }
       ],
       "hint": "Crop the source to the target format (portrait, square, or landscape).",
@@ -486,7 +572,7 @@
           "flag": "--no-trim-filler",
           "default": false,
           "hint": "Keep filler / preserve audio continuity.",
-          "help": "Disables filler/dead-air trimming \u2014 one whole-clip KEEP, no speech edits. Use when continuity matters more than tightness."
+          "help": "Disables filler/dead-air trimming — one whole-clip KEEP, no speech edits. Use when continuity matters more than tightness."
         },
         {
           "key": "no_false_starts",
@@ -1026,6 +1112,45 @@
           "hint": "Override the identity style."
         },
         {
+          "key": "subject_occupancy",
+          "type": "path",
+          "arity": "value",
+          "control": "picker",
+          "ui": {
+            "label": "Subject occupancy",
+            "control": "picker",
+            "group": "Placement"
+          },
+          "flag": "--subject-occupancy",
+          "hint": "Subject occupancy from reframe (optional) — captions dodge it.",
+          "help": "Point at the reframe step's occupancy file (work/reframe.occupancy.json, INI-090 Phase 2). When set, captions relocate off the subject; absent or missing, captions render normally.",
+          "path": {
+            "kind": "file",
+            "extensions": [
+              "json"
+            ]
+          }
+        },
+        {
+          "key": "position",
+          "type": "enum",
+          "arity": "value",
+          "control": "dropdown",
+          "ui": {
+            "label": "Caption position",
+            "control": "dropdown",
+            "group": "Placement"
+          },
+          "flag": "--position",
+          "options": [
+            "upper-third",
+            "center",
+            "lower-third"
+          ],
+          "hint": "Caption anchor (optional override).",
+          "help": "Forces the caption band; overrides the style default and any framing-intent hint carried in the occupancy file."
+        },
+        {
           "key": "karaoke",
           "type": "bool",
           "arity": "switch",
@@ -1301,7 +1426,7 @@
         }
       ],
       "hint": "Checkerboard-baked preview of the caption layer.",
-      "help": "Renders the transparent caption overlay over a neutral checkerboard into plain h264 so the previewer can play it in isolation. Optional \u2014 enable it only when you want to preview the caption layer in the app."
+      "help": "Renders the transparent caption overlay over a neutral checkerboard into plain h264 so the previewer can play it in isolation. Optional — enable it only when you want to preview the caption layer in the app."
     },
     {
       "id": "safezone.qc",
@@ -1351,7 +1476,7 @@
           "flag": "--strict",
           "default": false,
           "hint": "Exit non-zero on any violation.",
-          "help": "Turns advisory warnings into a hard failure (exit 1) \u2014 for scripted gating, not the interactive default."
+          "help": "Turns advisory warnings into a hard failure (exit 1) — for scripted gating, not the interactive default."
         },
         {
           "key": "no_face_check",
@@ -1381,11 +1506,11 @@
           "min": 0.0,
           "max": 1.0,
           "step": 0.05,
-          "hint": "Caption\u2229face fraction that flags occlusion."
+          "hint": "Caption∩face fraction that flags occlusion."
         }
       ],
       "hint": "Advisory: flag danger-zone intrusions + captions over faces.",
-      "help": "Checks protected elements against the danger polygon (notch-aware) and captions over the speaker's face. Advisory only \u2014 it warns at the export/composite control but never blocks (SADD \u00a74.2). --strict makes it exit non-zero for CI gating."
+      "help": "Checks protected elements against the danger polygon (notch-aware) and captions over the speaker's face. Advisory only — it warns at the export/composite control but never blocks (SADD §4.2). --strict makes it exit non-zero for CI gating."
     },
     {
       "id": "overlay.define",
@@ -1459,7 +1584,7 @@
           },
           "flag": "--source",
           "hint": "Base clip name recorded in the file header (advisory).",
-          "help": "A label written into the file's `source:` header for reference. Not the asset and not the base video \u2014 the base is supplied at render time (Render overlays \u2192 base video)."
+          "help": "A label written into the file's `source:` header for reference. Not the asset and not the base video — the base is supplied at render time (Render overlays → base video)."
         },
         {
           "key": "overlays",
@@ -1471,7 +1596,7 @@
             "group": "Overlays"
           },
           "flag": "--add",
-          "hint": "The overlays to place \u2014 one row each.",
+          "hint": "The overlays to place — one row each.",
           "help": "Each row is one overlay. Pick a Kind, point it at an asset path (Src), set its on-screen window (Start/End seconds, or a Discussed phrase with a Transcript loaded), and choose a Placement (full-bleed / bottom-half / a PiP rect). A video can duck or mute its own audio. Each row emits one --add entry.",
           "row": [
             {
@@ -1573,8 +1698,8 @@
           ]
         }
       ],
-      "hint": "Add one or more overlays \u2014 image, video, or source card.",
-      "help": "Writes overlay.def \u2014 one line per overlay (kind, src, window, placement, transition). Add overlays in the Overlays table below; each row becomes a --add entry. Set a window explicitly (start/end) or let it be proposed from the spoken span (a phrase in 'at' + a Transcript). You can also hand-edit the file afterward, then render."
+      "hint": "Add one or more overlays — image, video, or source card.",
+      "help": "Writes overlay.def — one line per overlay (kind, src, window, placement, transition). Add overlays in the Overlays table below; each row becomes a --add entry. Set a window explicitly (start/end) or let it be proposed from the spoken span (a phrase in 'at' + a Transcript). You can also hand-edit the file afterward, then render."
     },
     {
       "id": "overlay.card",
@@ -1798,12 +1923,12 @@
         }
       ],
       "hint": "Flatten base + overlay layers into review/composite.mp4.",
-      "help": "Stacks the layers bottom-to-top by z-order (base, then the caption overlay + any future overlays) into one previewable .mp4 \u2014 the in-app preview of the assembled result and the guide track the editor handoffs carry on top. QC advises but never blocks it. A review/handoff intermediate, not your final cut."
+      "help": "Stacks the layers bottom-to-top by z-order (base, then the caption overlay + any future overlays) into one previewable .mp4 — the in-app preview of the assembled result and the guide track the editor handoffs carry on top. QC advises but never blocks it. A review/handoff intermediate, not your final cut."
     },
     {
       "id": "export.premiere",
       "step": "output",
-      "label": "Export \u2014 Premiere Pro",
+      "label": "Export — Premiere Pro",
       "subcommand": "export premiere",
       "optional": true,
       "consumes": [
@@ -1866,13 +1991,13 @@
           "hint": "Sequence frame rate."
         }
       ],
-      "hint": "FCP7 XML (XMEML) \u2014 opens in Premiere Pro.",
+      "hint": "FCP7 XML (XMEML) — opens in Premiere Pro.",
       "help": "Assembles the base cut (the decision's KEEP segments over the reframed-uncut clip, as trimmable clips) + caption track + the composite as a disabled top guide track, as FCP7/XMEML XML. Premiere does not import FCPXML, so this is its dedicated target."
     },
     {
       "id": "export.fcpx",
       "step": "output",
-      "label": "Export \u2014 Final Cut / Resolve",
+      "label": "Export — Final Cut / Resolve",
       "subcommand": "export fcpxml",
       "optional": true,
       "consumes": [
@@ -1948,13 +2073,13 @@
           "hint": "FCPXML event name."
         }
       ],
-      "hint": "FCPXML 1.10 \u2014 Final Cut Pro / DaVinci Resolve.",
+      "hint": "FCPXML 1.10 — Final Cut Pro / DaVinci Resolve.",
       "help": "The same timeline (base cut + captions + composite guide) serialized as FCPXML 1.10 for Final Cut Pro and DaVinci Resolve."
     },
     {
       "id": "export.capcut",
       "step": "output",
-      "label": "Export \u2014 CapCut",
+      "label": "Export — CapCut",
       "subcommand": "export capcut",
       "optional": true,
       "consumes": [
@@ -2023,6 +2148,14 @@
       "help": "A stable copy of the reframed-but-uncut video, written by reframe alongside base.mp4. The editor handoffs reference this (not base, which roughcut.render rewrites with the cut) so the decision file's KEEP segments lay over the full clip as separate, trimmable clips."
     },
     {
+      "id": "subject.occupancy",
+      "kind": "descriptor",
+      "path": "work/reframe.occupancy.json",
+      "previewable": false,
+      "hint": "The subject's footprint in the reframed frame.",
+      "help": "Written by reframe (INI-090): the tracked subject's box projected into the target frame, as caption avoid-windows. The caption render optionally consumes it so captions dodge the subject."
+    },
+    {
       "id": "safezone.def",
       "kind": "descriptor",
       "path": "work/safezone.json",
@@ -2036,7 +2169,7 @@
       "path": "work/roughcut.decision.yml",
       "previewable": false,
       "hint": "Editable cut decision file.",
-      "help": "The product of the rough-cut step \u2014 one scannable KEEP/DROP line per segment. Hand-edit it, then roughcut.render applies it."
+      "help": "The product of the rough-cut step — one scannable KEEP/DROP line per segment. Hand-edit it, then roughcut.render applies it."
     },
     {
       "id": "caption.def",
@@ -2054,7 +2187,7 @@
       "z_order": 30,
       "codec_hint": "hevc-alpha",
       "hint": "Styled caption overlay (transparent).",
-      "help": "The rendered caption layer the NLE stacks on top. Transparent HEVC-alpha \u2014 not previewed directly (the webview can't be relied on to decode alpha); the caption.preview proxy is its previewable form."
+      "help": "The rendered caption layer the NLE stacks on top. Transparent HEVC-alpha — not previewed directly (the webview can't be relied on to decode alpha); the caption.preview proxy is its previewable form."
     },
     {
       "id": "caption.preview",
@@ -2064,7 +2197,7 @@
       "z_order": 30,
       "codec_hint": "h264",
       "hint": "Caption layer over a checkerboard (preview).",
-      "help": "The caption overlay baked over a neutral checkerboard into plain h264 so the previewer can play it in isolation. A GUI-only proxy \u2014 never bundled into an editor export."
+      "help": "The caption overlay baked over a neutral checkerboard into plain h264 so the previewer can play it in isolation. A GUI-only proxy — never bundled into an editor export."
     },
     {
       "id": "overlay.def",
@@ -2072,7 +2205,7 @@
       "path": "work/overlay.def.yml",
       "previewable": false,
       "hint": "Editable overlay decision file.",
-      "help": "One line per overlay (kind, src, source-time window, placement, transition). The product \u2014 hand-edit before rendering, mirrors roughcut.def / caption.def."
+      "help": "One line per overlay (kind, src, source-time window, placement, transition). The product — hand-edit before rendering, mirrors roughcut.def / caption.def."
     },
     {
       "id": "card.content",
@@ -2116,7 +2249,7 @@
       "z_order": 100,
       "codec_hint": "h264",
       "hint": "Flattened preview of all layers.",
-      "help": "The base + caption/overlay layers composited into one .mp4 \u2014 the in-app 'assembled result' preview and the muted guide track the editor handoffs include on top (highest z-order). A preview/handoff intermediate in review/, not the final cut (that is render/, yours from the NLE)."
+      "help": "The base + caption/overlay layers composited into one .mp4 — the in-app 'assembled result' preview and the muted guide track the editor handoffs include on top (highest z-order). A preview/handoff intermediate in review/, not the final cut (that is render/, yours from the NLE)."
     },
     {
       "id": "export.premiere",
