@@ -36,7 +36,7 @@ PIPELINE_SRC = Path(
     os.environ.get("VIDEO_PIPELINE_SRC", ROOT.parent / "video-pipeline" / "src")
 )
 
-VALID_CONTROLS = {"toggle", "slider", "stepper", "dropdown", "field", "picker"}
+VALID_CONTROLS = {"toggle", "slider", "stepper", "dropdown", "field", "picker", "rows"}
 
 
 def _load(p: Path) -> dict:

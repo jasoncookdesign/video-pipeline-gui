@@ -137,6 +137,29 @@ export function assembleArgv(
     if (v === true && p.flag) argv.push(p.flag);
   }
 
+  // --- rows params (one `flag spec` pair per non-empty row) ---
+  // spec = the row's `key=value;…` over the fields it carries. Identical encoding
+  // to assemble.py / command.rs (the golden-argv contract pins all three). Rows
+  // params are declared last so this matches the backend's declaration-order pass.
+  const rowScalar = (v: unknown): string =>
+    typeof v === "boolean" ? (v ? "true" : "false") : String(v);
+  for (const p of task.params) {
+    if (p.arity !== "rows") continue;
+    const v = valueFor(p.key);
+    if (!Array.isArray(v)) continue;
+    for (const row of v) {
+      if (typeof row !== "object" || row === null) continue;
+      const cells = row as Record<string, unknown>;
+      const parts: string[] = [];
+      for (const rf of p.row ?? []) {
+        const cell = cells[rf.key];
+        if (cell === undefined || cell === null || cell === "") continue;
+        parts.push(`${rf.key}=${rowScalar(cell)}`);
+      }
+      if (parts.length > 0 && p.flag) argv.push(p.flag, parts.join(";"));
+    }
+  }
+
   // --- io flag bindings (flag + path) ---
   for (const io of task.io) {
     if (io.via !== "flag" || !io.flag) continue;

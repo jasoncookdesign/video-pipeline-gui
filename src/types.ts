@@ -5,14 +5,15 @@
 // this file moves with it (and only this file).
 
 export type ParamType = "bool" | "number" | "enum" | "string" | "path";
-export type ParamArity = "positional" | "value" | "switch";
+export type ParamArity = "positional" | "value" | "switch" | "rows";
 export type ControlKind =
   | "toggle"
   | "slider"
   | "stepper"
   | "dropdown"
   | "field"
-  | "picker";
+  | "picker"
+  | "rows";
 export type ArtifactKind = "layer" | "descriptor" | "media" | "manifest";
 
 /** ui.depends_on:{key,equals} — conditional visibility against a sibling param. */
@@ -54,6 +55,18 @@ export interface Compose {
   parts: ComposePart[];
 }
 
+/** One column of a repeatable `rows` param (arity="rows"). Each row assembles to
+ *  a `key=value;…` spec emitted as one repeated flag token. */
+export interface RowField {
+  key: string;
+  label: string;
+  control: "field" | "dropdown";
+  options?: string[];
+  default?: unknown;
+  hint?: string;
+  placeholder?: string;
+}
+
 export interface Param {
   key: string;
   type: ParamType;
@@ -72,6 +85,8 @@ export interface Param {
   example?: string;
   compose?: Compose;
   path?: PathSpec;
+  /** arity="rows": the per-row column schema for the repeatable control. */
+  row?: RowField[];
   ui: UiSpec;
 }
 

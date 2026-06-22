@@ -97,6 +97,24 @@ pub struct Compose {
     pub parts: Vec<ComposePart>,
 }
 
+/// One column of a repeatable `rows` param (e.g. an overlay's kind/src/window).
+/// Each row assembles to a `key=value;…` spec — one repeated flag token. The Rust
+/// core only needs the key + control to drive argv assembly; the rest is frontend.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RowField {
+    pub key: String,
+    pub label: String,
+    pub control: String, // field | dropdown
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub options: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default: Option<serde_json::Value>,
+    #[serde(default)]
+    pub hint: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub placeholder: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Param {
     pub key: String,
@@ -131,6 +149,10 @@ pub struct Param {
     pub compose: Option<Compose>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub path: Option<PathSpec>,
+    /// arity = "rows": the per-row column schema (drives the repeatable control +
+    /// the `key=value;…` spec each row emits as one repeated flag token).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub row: Option<Vec<RowField>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -43,6 +43,19 @@ fn truthy(v: &Value) -> bool {
     }
 }
 
+/// Render a row field value into its `key=value` token, or None to omit it
+/// (null / empty string). Mirrors `assemble._row_scalar` / `ipc.ts` exactly.
+fn row_scalar(v: &Value) -> Option<String> {
+    match v {
+        Value::Null => None,
+        Value::String(s) if s.is_empty() => None,
+        Value::String(s) => Some(s.clone()),
+        Value::Bool(b) => Some(b.to_string()),
+        Value::Number(n) => Some(n.to_string()),
+        other => Some(other.to_string()),
+    }
+}
+
 pub fn resolve_argv(
     schema: &Schema,
     task_id: &str,
@@ -116,6 +129,33 @@ pub fn resolve_argv(
                         })
                     }
                     None => {}
+                }
+            }
+            "rows" => {
+                // Repeatable structured rows: one `flag spec` pair per non-empty
+                // row, spec = the row's `key=value;…` over the fields it carries.
+                // Identical encoding in assemble.py / ipc.ts (golden-argv contract).
+                let val = form_values.get(&p.key).cloned().unwrap_or(p.default.clone());
+                if let Value::Array(rows) = val {
+                    let fields = p.row.as_deref().unwrap_or(&[]);
+                    for row in &rows {
+                        if let Value::Object(map) = row {
+                            let mut parts: Vec<String> = Vec::new();
+                            for rf in fields {
+                                if let Some(v) = map.get(&rf.key) {
+                                    if let Some(s) = row_scalar(v) {
+                                        parts.push(format!("{}={}", rf.key, s));
+                                    }
+                                }
+                            }
+                            if !parts.is_empty() {
+                                if let Some(flag) = &p.flag {
+                                    argv.push(flag.clone());
+                                    argv.push(parts.join(";"));
+                                }
+                            }
+                        }
+                    }
                 }
             }
             _ => {}
@@ -231,5 +271,34 @@ mod tests {
         let si = argv.iter().position(|x| x == "--safezone").unwrap();
         assert_eq!(argv[si + 1], "work/safezone.json");
         assert!(argv.contains(&"--karaoke".to_string()));
+    }
+
+    #[test]
+    fn rows_emit_one_add_per_non_empty_row() {
+        let argv = resolve_argv(
+            &sch(),
+            "overlay.define",
+            &vals(&[(
+                "overlays",
+                serde_json::json!([
+                    {"kind":"image","src":"a.png","start":"3.2","end":"7.8","placement":"bottom-half"},
+                    {"kind":"video","src":"b.mov","at":"the demo","placement":"pip-rect","rect":"60,1180,420,560","audio":"duck"}
+                ]),
+            )]),
+            &paths(&[("overlay.def", "work/overlay.def.yml")]),
+        )
+        .unwrap();
+        let mut adds: Vec<String> = Vec::new();
+        for i in 0..argv.len() {
+            if argv[i] == "--add" {
+                adds.push(argv[i + 1].clone());
+            }
+        }
+        assert_eq!(adds.len(), 2);
+        assert_eq!(adds[0], "kind=image;src=a.png;start=3.2;end=7.8;placement=bottom-half");
+        assert_eq!(
+            adds[1],
+            "kind=video;src=b.mov;at=the demo;placement=pip-rect;rect=60,1180,420,560;audio=duck"
+        );
     }
 }
