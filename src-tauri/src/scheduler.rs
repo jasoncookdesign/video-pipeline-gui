@@ -364,8 +364,12 @@ mod tests {
     #[test]
     fn single_step_run_is_valid() {
         // Running just project.init (no consumes) yields one level, no errors.
-        let plan = build_plan(&schema(), &enabled(&["project.init"])).unwrap();
+        // Every *other schema task* is skipped — count against the loaded schema,
+        // not the scenario enable-list ALL, so the check survives the schema
+        // growing (e.g. the INI-089 overlay step added three tasks).
+        let s = schema();
+        let plan = build_plan(&s, &enabled(&["project.init"])).unwrap();
         assert_eq!(plan.scheduled(), vec!["project.init".to_string()]);
-        assert_eq!(plan.skipped.len(), ALL.len() - 1);
+        assert_eq!(plan.skipped.len(), s.tasks.len() - 1);
     }
 }

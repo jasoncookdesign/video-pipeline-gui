@@ -337,10 +337,12 @@ def check_scheduler(schema):
     assert len(plan.waves(1, 1)) == 2
     assert len(plan.waves(1, 2)) == 1
 
-    # 8: single-step run
+    # 8: single-step run — enabling one task skips every *other schema task*
+    # (count against the live schema, not the scenario enable-list ALL, so the
+    # check survives the schema growing — e.g. the INI-089 overlay step).
     plan = build_plan(s, {"project.init"})
     assert plan.scheduled() == ["project.init"]
-    assert len(plan.skipped) == len(ALL) - 1
+    assert len(plan.skipped) == len(s["tasks"]) - 1
 
     return 8
 
