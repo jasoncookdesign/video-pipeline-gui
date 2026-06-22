@@ -1,6 +1,6 @@
 # video-pipeline-gui
 
-A desktop **control tower** over the [`video-pipeline`](../video-pipeline) command-line
+A desktop **control tower** over the [`video-pipeline`](https://github.com/jasoncookdesign/video-pipeline) command-line
 tool. It runs pipeline steps, streams their output live, and previews the layers
 each step produces.
 
@@ -93,7 +93,7 @@ targets, **adding a pipeline step surfaces in the GUI with no recompile.** Defin
 the step on the pipeline side, re-emit, relaunch — the new form, preview source,
 or export target appears. The pipeline owns *what* the steps are; the GUI's
 meta-schema owns what *conformant* means. See
-[`../video-pipeline/docs/gui-schema.md`](../video-pipeline/docs/gui-schema.md) for
+[`video-pipeline/docs/gui-schema.md`](https://github.com/jasoncookdesign/video-pipeline/blob/main/docs/gui-schema.md) for
 the pipeline side of the contract.
 
 Parameter controls are scalar (text, number, dropdown, toggle, path picker) plus a
@@ -139,7 +139,7 @@ bash scripts/setup-check.sh
   sure `~/.cargo/env` is sourced by your shell rc so `cargo` is on `PATH` in new
   shells)
 - **Node** 18+ (for the frontend build)
-- A checkout of the [`video-pipeline`](../video-pipeline) repo (a sibling
+- A checkout of the [`video-pipeline`](https://github.com/jasoncookdesign/video-pipeline) repo (a sibling
   directory by default; the contract test's live path reads it to diff-check
   emits)
 
