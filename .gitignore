@@ -16,6 +16,11 @@ src-tauri/gen/
 Cargo.lock
 package-lock.json
 
+# Playwright (sandbox-only UI harness)
+test-results/
+playwright-report/
+.playwright/
+
 # OS / editor
 .DS_Store
 *.log
