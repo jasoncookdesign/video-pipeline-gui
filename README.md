@@ -200,6 +200,8 @@ For the full Mac-side build, test, and acceptance sequence (everything that need
 a real toolchain and the webview, mapped to the DoD), follow
 [`docs/mac-build-runbook.md`](docs/mac-build-runbook.md).
 
+A map of which document covers what is in [`DOCS.md`](DOCS.md).
+
 ## Repository topology
 
 The GUI and the pipeline currently live as **co-located but separate packages**
