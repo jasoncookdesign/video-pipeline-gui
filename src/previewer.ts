@@ -23,6 +23,8 @@ import { store } from "./state";
 import { artifactPathsFor } from "./command";
 import { bindLabelHelp, helpMarkup, type HelpPanel } from "./help";
 import { tauriAvailable } from "./dialog";
+import { mountCropBox, type CropBoxController } from "./cropBox";
+import { Rotation, type RotationDeg } from "./reframeBox";
 
 // In the Tauri webview a <video> can't load a raw filesystem path — it needs an
 // asset-protocol URL. `convertFileSrc` produces one (identity in browser/mock).
@@ -56,11 +58,34 @@ function layerName(a: Artifact): string {
   return isPreview ? `${title} (preview)` : title;
 }
 
+/** What the previewer needs to enter reframe crop mode. */
+export interface CropModeSource {
+  /** The source clip to show (asset path); optional when dims are injected. */
+  src?: string;
+  /** Stored source dims — supply directly to skip `loadedmetadata` (tests/known). */
+  srcW?: number;
+  srcH?: number;
+  rotation?: RotationDeg;
+  /** Fired once the source's stored dims are known (real video: on metadata). */
+  onSourceDims?: (srcW: number, srcH: number, rotation: RotationDeg) => void;
+  /** Wired to the crop box's reset-to-proposal control. */
+  onResetProposal?: () => void;
+}
+
 export interface Previewer {
   /** Recompute which layers are available (present ∩ previewable) and rebuild. */
   refresh(projectRoot: string | undefined): Promise<void>;
   /** Lock the stage aspect ratio to the output profile (e.g. "feed-square-1x1"). */
   setProfile(profile: string): void;
+  /**
+   * Enter the reframe crop mode: show the source at its NATURAL aspect (not the
+   * locked output aspect) and overlay the draggable crop box. Returns the box
+   * controller for two-way binding, or null if the overlay can't mount. The overlay
+   * appears as soon as the source dims are known (immediately when injected).
+   */
+  enterCropMode(source: CropModeSource): CropBoxController | null;
+  /** Leave crop mode and restore normal layer preview. */
+  exitCropMode(): void;
 }
 
 export function mountPreviewer(
@@ -75,6 +100,7 @@ export function mountPreviewer(
         <div class="previewer__backdrop" aria-hidden="true"></div>
         <video class="previewer__video" playsinline preload="auto"></video>
         <div class="previewer__empty empty-state"><span></span></div>
+        <div class="previewer__overlay" hidden></div>
       </div>
     </div>
     <div class="previewer__transport">
@@ -90,6 +116,7 @@ export function mountPreviewer(
         <input class="previewer__vol" type="range" min="0" max="1" step="0.01" value="1" />
         <output class="previewer__volval">1.00</output>
       </label>
+      <button class="previewer__resetcrop" type="button" hidden>Reset to proposal</button>
       <span class="previewer__status"></span>
     </div>
   `;
@@ -127,6 +154,9 @@ export function mountPreviewer(
   const timeEl = host.querySelector<HTMLElement>(".previewer__time")!;
   const emptyEl = host.querySelector<HTMLElement>(".previewer__empty > span")!;
   const emptyBox = host.querySelector<HTMLElement>(".previewer__empty")!;
+  const overlay = host.querySelector<HTMLElement>(".previewer__overlay")!;
+  const layerLabel = host.querySelector<HTMLElement>(".previewer__layerlabel")!;
+  const resetCropBtn = host.querySelector<HTMLButtonElement>(".previewer__resetcrop")!;
 
   const showEmpty = (text: string) => {
     emptyEl.textContent = text;
@@ -137,20 +167,26 @@ export function mountPreviewer(
   };
 
   // Stage sizing: the aspect ratio is locked to the output profile; the size is
-  // free — fit the largest box of that ratio inside the available area.
+  // free — fit the largest box of that ratio inside the available area. In crop mode
+  // the stage instead takes the SOURCE's natural aspect so the box maps to real pixels.
   let aspect = 9 / 16; // default (reels) until setProfile runs
+  let cropMode = false;
+  let cropAspect = 9 / 16; // source display aspect while in crop mode
+  let crop: CropBoxController | null = null;
   function fitStage(): void {
     const availW = stageWrap.clientWidth;
     const availH = stageWrap.clientHeight;
     if (availW <= 0 || availH <= 0) return;
+    const ar = cropMode ? cropAspect : aspect;
     let w = availW;
-    let h = availW / aspect;
+    let h = availW / ar;
     if (h > availH) {
       h = availH;
-      w = availH * aspect;
+      w = availH * ar;
     }
     stage.style.width = `${Math.floor(w)}px`;
     stage.style.height = `${Math.floor(h)}px`;
+    crop?.relayout();
   }
   new ResizeObserver(() => fitStage()).observe(stageWrap);
 
@@ -279,8 +315,12 @@ export function mountPreviewer(
     swapSource(src, artifact);
   }
 
-  return {
-    async refresh(projectRoot: string | undefined): Promise<void> {
+  let lastRoot: string | undefined;
+
+  async function refresh(projectRoot: string | undefined): Promise<void> {
+      lastRoot = projectRoot;
+      // Crop mode owns the <video>/overlay; layer refresh resumes on exit.
+      if (cropMode) return;
       await assetReady; // ensure convertFileSrc is loaded before any src swap
       const root = projectRoot ?? store.activeProjectRoot() ?? "";
       let present: string[] = [];
@@ -324,7 +364,88 @@ export function mountPreviewer(
           "Layer preview. Once a step renders a layer (base video, caption overlay…), pick it here to play it back.",
         );
       }
-    },
+  }
+
+  // ── reframe crop mode ──────────────────────────────────────────────────────────
+  // Toggle the chrome between layer-preview and crop-edit. Crop mode hides the layer
+  // selector + empty watermark and reveals the reset-to-proposal control.
+  function setCropChrome(on: boolean): void {
+    host.classList.toggle("previewer--cropmode", on);
+    layerLabel.hidden = on;
+    resetCropBtn.hidden = !on;
+    overlay.hidden = !on;
+    if (on) hideEmpty();
+  }
+
+  let onCropReset: (() => void) | null = null;
+  resetCropBtn.addEventListener("click", () => onCropReset?.());
+
+  // Apply the source's stored dims: set the stage to its display aspect, mount/define
+  // the overlay source, and notify the caller (for the two-way binding's target).
+  function applyCropSource(
+    srcW: number,
+    srcH: number,
+    rotation: RotationDeg,
+    notify?: (w: number, h: number, r: RotationDeg) => void,
+  ): void {
+    if (srcW <= 0 || srcH <= 0) return;
+    // videoWidth/Height are already display dims in the browser, so the display
+    // aspect is the stored ratio for R0 and swaps for 90/270.
+    const swap = rotation === Rotation.R90 || rotation === Rotation.R270;
+    cropAspect = swap ? srcH / srcW : srcW / srcH;
+    fitStage();
+    crop?.setSource({ srcW, srcH, rotation });
+    // Defer the dims notification one microtask so the caller's binding (created from
+    // the controller AFTER enterCropMode returns) is in place before it fires — true
+    // for injected dims (synchronous) and harmless for the metadata path.
+    if (notify) queueMicrotask(() => notify(srcW, srcH, rotation));
+  }
+
+  function enterCropMode(source: CropModeSource): CropBoxController | null {
+    cropMode = true;
+    setCropChrome(true);
+    onCropReset = source.onResetProposal ?? null;
+    if (!crop) crop = mountCropBox(overlay);
+
+    // Show the source clip itself (visual is the CEO's WKWebView pass; the overlay
+    // geometry is authoritative headlessly even over a black stage).
+    if (source.src) {
+      void assetReady.then(() => {
+        video.src = toAssetUrl(source.src!);
+        video.load();
+      });
+    }
+
+    const rotation = source.rotation ?? Rotation.R0;
+    if (source.srcW && source.srcH) {
+      // Injected/known dims — overlay appears immediately.
+      applyCropSource(source.srcW, source.srcH, rotation, source.onSourceDims);
+    } else {
+      // Real video — dims arrive with the metadata; the overlay appears then.
+      const onMeta = () => {
+        video.removeEventListener("loadedmetadata", onMeta);
+        applyCropSource(video.videoWidth, video.videoHeight, rotation, source.onSourceDims);
+      };
+      video.addEventListener("loadedmetadata", onMeta);
+    }
+    return crop;
+  }
+
+  function exitCropMode(): void {
+    if (!cropMode) return;
+    cropMode = false;
+    onCropReset = null;
+    crop?.destroy();
+    crop = null;
+    setCropChrome(false);
+    fitStage();
+    void refresh(lastRoot); // restore the normal layer preview
+  }
+
+  return {
+    refresh,
     setProfile,
+    enterCropMode,
+    exitCropMode,
   };
 }
