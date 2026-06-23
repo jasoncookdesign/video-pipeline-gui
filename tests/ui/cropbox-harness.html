@@ -1,0 +1,53 @@
+<!doctype html>
+<!--
+  cropbox-harness.html — SANDBOX-ONLY isolation harness for the Phase 4 crop box.
+  Mounts mountCropBox() over a synthetic source so the Playwright suite can drive
+  drag/resize against the real geometry without the full app or a video file.
+  Served by vite in dev (import resolves /src/cropBox.ts). Not shipped.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Crop Box Harness</title>
+    <style>
+      body { margin: 0; background: #111; }
+      #stage { position: relative; width: 480px; height: 480px; margin: 20px; background: #222; }
+      /* Minimal box chrome so handles are hittable in the headless test. */
+      .cropbox__rect { position: absolute; outline: 2px solid #4ea1ff; box-sizing: border-box; cursor: move; }
+      .cropbox__frame { position: absolute; }
+      .cropbox__mask { position: absolute; background: rgba(0,0,0,0.45); pointer-events: none; }
+      .cropbox__handle { position: absolute; width: 16px; height: 16px; background: #4ea1ff; border-radius: 2px; }
+      .cropbox__handle--nw { left: -8px; top: -8px; cursor: nwse-resize; }
+      .cropbox__handle--ne { right: -8px; top: -8px; cursor: nesw-resize; }
+      .cropbox__handle--se { right: -8px; bottom: -8px; cursor: nwse-resize; }
+      .cropbox__handle--sw { left: -8px; bottom: -8px; cursor: nesw-resize; }
+      .cropbox__readout { position: absolute; left: 0; bottom: -22px; color: #ccc; font: 12px sans-serif; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <script type="module">
+      import { mountCropBox } from "/src/cropBox.ts";
+      import { makeModel } from "/src/reframeBox.ts";
+
+      const stage = document.getElementById("stage");
+      const crop = mountCropBox(stage);
+      // 4K landscape source, portrait 9:16 1080p target — the classic reframe case
+      // with headroom to punch in (native crop 1216×2160 > 1080×1920 output).
+      crop.setSource({ srcW: 3840, srcH: 2160 });
+      crop.setTarget({ aspectW: 9, aspectH: 16, outW: 1080, outH: 1920, allowUpscale: false });
+      const start = makeModel(1.0, 0.5, 0.5);
+      crop.setProposal(start);
+      crop.setModel(start);
+
+      // Expose state for the test to assert against.
+      window.__crop = crop;
+      window.__lastModel = crop.getModel();
+      window.__changes = 0;
+      crop.onChange((m) => {
+        window.__lastModel = m;
+        window.__changes += 1;
+      });
+    </script>
+  </body>
+</html>

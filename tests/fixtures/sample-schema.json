@@ -361,18 +361,17 @@
       "help": "Builds the safe-zone spec consumed downstream. INI-091 modes: none (full frame is safe), generic (per-aspect conservative insets, the default), or custom (trace a design template PNG where the danger region is marked by alpha or a key color)."
     },
     {
-      "id": "reframe",
+      "id": "reframe.propose",
       "step": "reframe",
-      "label": "Reframe to target format",
-      "subcommand": "reframe",
+      "label": "Propose reframe",
+      "subcommand": "reframe-propose",
       "optional": true,
       "consumes": [
         "base"
       ],
       "produces": [
-        "base",
-        "reframed",
-        "subject.occupancy"
+        "reframe.def",
+        "subject.track"
       ],
       "io": [
         {
@@ -382,22 +381,16 @@
           "order": 0
         },
         {
-          "artifact": "base",
+          "artifact": "reframe.def",
           "role": "output",
           "via": "flag",
           "flag": "-o"
         },
         {
-          "artifact": "reframed",
+          "artifact": "subject.track",
           "role": "output",
           "via": "flag",
-          "flag": "--reframed-out"
-        },
-        {
-          "artifact": "subject.occupancy",
-          "role": "output",
-          "via": "flag",
-          "flag": "--occupancy-out"
+          "flag": "--track-out"
         }
       ],
       "params": [
@@ -598,6 +591,73 @@
           "example": "--lock both"
         },
         {
+          "key": "allow_upscale",
+          "type": "bool",
+          "arity": "switch",
+          "control": "toggle",
+          "ui": {
+            "label": "Allow upscale",
+            "control": "toggle",
+            "group": "Framing"
+          },
+          "flag": "--allow-upscale",
+          "default": false,
+          "hint": "Advanced: let the punch-in exceed the max-zoom.",
+          "help": "By default the punch-in is hard-stopped at the resolution-driven max-zoom so the render never upscales past tolerance. This opt-in lets a deliberate over-punch through."
+        }
+      ],
+      "hint": "Track the subject + propose the crop -> editable reframe.def.",
+      "help": "Subject-tracking crop *proposal*. Runs the tracker once, converts the subject-derived centre + framing intent into the editable reframe.def (scale / pan / aspect / resolution) and persists the subject track so Render replays the geometry without re-tracking. Static holds one crop; dynamic follows the subject. Daily-driver path needs MediaPipe."
+    },
+    {
+      "id": "reframe.render",
+      "step": "reframe",
+      "label": "Render reframe",
+      "subcommand": "reframe-render",
+      "optional": true,
+      "consumes": [
+        "base",
+        "reframe.def"
+      ],
+      "produces": [
+        "base",
+        "reframed",
+        "subject.occupancy"
+      ],
+      "io": [
+        {
+          "artifact": "base",
+          "role": "input",
+          "via": "positional",
+          "order": 0
+        },
+        {
+          "artifact": "reframe.def",
+          "role": "input",
+          "via": "flag",
+          "flag": "--reframe-def"
+        },
+        {
+          "artifact": "base",
+          "role": "output",
+          "via": "flag",
+          "flag": "-o"
+        },
+        {
+          "artifact": "reframed",
+          "role": "output",
+          "via": "flag",
+          "flag": "--reframed-out"
+        },
+        {
+          "artifact": "subject.occupancy",
+          "role": "output",
+          "via": "flag",
+          "flag": "--occupancy-out"
+        }
+      ],
+      "params": [
+        {
           "key": "dry_run",
           "type": "bool",
           "arity": "switch",
@@ -605,16 +665,16 @@
           "ui": {
             "label": "Dry run",
             "control": "toggle",
-            "group": "Crop"
+            "group": "Render"
           },
           "flag": "--dry-run",
           "default": false,
           "hint": "Plan the crop without rendering.",
-          "help": "Computes and prints the crop plan but writes no video — fast way to sanity-check tracking before a full render."
+          "help": "Computes and prints the ffmpeg command but writes no video — fast way to sanity-check the def's geometry before a full render."
         }
       ],
-      "hint": "Crop the source to the target format (portrait, square, or landscape).",
-      "help": "Subject-tracking crop. Static holds one crop; dynamic follows the subject. Daily-driver path needs MediaPipe; --dry-run plans without rendering."
+      "hint": "Render the reframed clip from the (edited) reframe.def.",
+      "help": "Reads the reframe.def + its persisted subject track, resolves the framing model to the exact pixel crop, and runs the ffmpeg crop — no re-tracking, no re-derivation: the geometry the def carries is the geometry rendered. Re-runnable after you hand-edit the def. Recomputes subject occupancy from the final crop so captions dodge the subject."
     },
     {
       "id": "roughcut",
@@ -2237,7 +2297,23 @@
       "path": "work/reframe.occupancy.json",
       "previewable": false,
       "hint": "The subject's footprint in the reframed frame.",
-      "help": "Written by reframe (INI-090): the tracked subject's box projected into the target frame, as caption avoid-windows. The caption render optionally consumes it so captions dodge the subject."
+      "help": "Written by reframe.render (INI-090): the tracked subject's box projected into the target frame, as caption avoid-windows, recomputed from the FINAL edited crop. The caption render optionally consumes it so captions dodge the subject."
+    },
+    {
+      "id": "reframe.def",
+      "kind": "descriptor",
+      "path": "work/reframe.json",
+      "previewable": false,
+      "hint": "Editable reframe decision file (the product).",
+      "help": "The reframe-decision file (INI-091): aspect/resolution target + the framing model {scale, pan_x, pan_y} + mode/lock + the subject-track reference. Written by reframe.propose, hand-editable, and consumed by reframe.render — which resolves it to the EXACT pixel crop with no re-derivation. Mirrors roughcut.def / caption.def."
+    },
+    {
+      "id": "subject.track",
+      "kind": "descriptor",
+      "path": "work/reframe.track.json",
+      "previewable": false,
+      "hint": "Persisted subject track (tracker output).",
+      "help": "The per-frame subject track reframe.propose persists from the (native, Mac-side) tracker run. reframe.def references it so reframe.render replays the geometry without re-running the expensive native tracker — the native step runs once."
     },
     {
       "id": "safezone.def",

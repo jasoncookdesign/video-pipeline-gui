@@ -25,13 +25,14 @@ class StateStore {
     const persisted = await ipc.readState();
     if (persisted) {
       // Merge defensively — the backend may predate fields we now expect.
+      const persistedSession = persisted.session ?? { formValues: {} };
       this.state = {
         ...emptyState(),
         ...persisted,
         projects: persisted.projects ?? {},
         session: {
-          formValues: {},
-          ...(persisted.session ?? {}),
+          ...persistedSession,
+          formValues: persistedSession.formValues ?? {},
         },
       };
     }

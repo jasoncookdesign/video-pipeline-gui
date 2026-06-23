@@ -198,29 +198,42 @@ mod tests {
     }
 
     #[test]
-    fn reframe_is_runnable() {
+    fn reframe_propose_is_runnable() {
+        // The reframe step is two tasks now (INI-091): propose carries the framing
+        // controls and writes the reframe.def; render consumes the def.
         let argv = resolve_argv(
             &sch(),
-            "reframe",
+            "reframe.propose",
             &vals(&[("mode", Value::from("dynamic"))]),
-            &paths(&[("base", "work/base.mp4")]),
+            &paths(&[
+                ("base", "work/base.mp4"),
+                ("reframe.def", "work/reframe.json"),
+                ("subject.track", "work/reframe.track.json"),
+            ]),
         )
         .unwrap();
         assert_eq!(argv[0], "video-pipeline");
-        assert_eq!(argv[1], "reframe");
+        assert_eq!(argv[1], "reframe-propose");
         assert!(argv.contains(&"work/base.mp4".to_string()));
         let oi = argv.iter().position(|x| x == "-o").unwrap();
-        assert_eq!(argv[oi + 1], "work/base.mp4");
+        assert_eq!(argv[oi + 1], "work/reframe.json");
         let mi = argv.iter().position(|x| x == "--mode").unwrap();
         assert_eq!(argv[mi + 1], "dynamic");
     }
 
     #[test]
     fn switch_only_when_true() {
-        let on = resolve_argv(&sch(), "reframe", &vals(&[("dry_run", Value::Bool(true))]),
-            &paths(&[("base", "b.mp4")])).unwrap();
-        let off = resolve_argv(&sch(), "reframe", &vals(&[("dry_run", Value::Bool(false))]),
-            &paths(&[("base", "b.mp4")])).unwrap();
+        // dry_run lives on the reframe *render* task after the split.
+        let rp = &paths(&[
+            ("base", "b.mp4"),
+            ("reframe.def", "d.json"),
+            ("reframed", "r.mp4"),
+            ("subject.occupancy", "o.json"),
+        ]);
+        let on = resolve_argv(&sch(), "reframe.render",
+            &vals(&[("dry_run", Value::Bool(true))]), rp).unwrap();
+        let off = resolve_argv(&sch(), "reframe.render",
+            &vals(&[("dry_run", Value::Bool(false))]), rp).unwrap();
         assert!(on.contains(&"--dry-run".to_string()));
         assert!(!off.contains(&"--dry-run".to_string()));
     }
