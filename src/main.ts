@@ -17,10 +17,17 @@ import type {
 } from "./types";
 import { store } from "./state";
 import { initTheme, toggleTheme } from "./theme";
-import { renderForm } from "./forms";
-import { mountCommandPreview } from "./command";
+import { renderForm, setControlValue } from "./forms";
+import { mountCommandPreview, artifactPathsFor } from "./command";
 import { mountLog } from "./log";
 import { mountPreviewer } from "./previewer";
+import {
+  mountReframeBinding,
+  isReframeModelKey,
+  isReframeTargetKey,
+  type ReframeBinding,
+} from "./reframeBinding";
+import type { FramingModel } from "./reframeBox";
 import { setupDragDrop } from "./dnd";
 import { confirmDialog, pickPath, tauriAvailable } from "./dialog";
 import { bindLabelHelp, helpMarkup, type HelpPanel } from "./help";
@@ -159,8 +166,58 @@ async function boot(): Promise<void> {
 
   let selectedTask: Task | null = null;
 
+  // ---- reframe crop mode (INI-091): the draggable box <-> reframe.propose knobs ----
+  const REFRAME_TASK = "reframe.propose";
+  let reframeBinding: ReframeBinding | null = null;
+
   const refreshCommand = () => void cmdPreview.update(selectedTask);
   const refreshPlan = () => void validateSelection([...enabled]);
+
+  // Push a box-driven model change onto the visible scale/pan inputs (if shown).
+  function updateReframeKnobDisplay(model: FramingModel): void {
+    const formHost = $("#form-host");
+    setControlValue(formHost, REFRAME_TASK, "scale", model.scale);
+    setControlValue(formHost, REFRAME_TASK, "pan_x", model.pan_x);
+    setControlValue(formHost, REFRAME_TASK, "pan_y", model.pan_y);
+    refreshCommand();
+    updateRunEnabled();
+  }
+
+  function enterReframeCropMode(): void {
+    const base = artifactPathsFor(schema, store.projectRoot())["base"];
+    let binding: ReframeBinding | null = null;
+    const ctrl = previewer.enterCropMode({
+      src: base, // may be undefined before a project exists — overlay still mounts
+      onSourceDims: (w, h) => {
+        binding?.setSourceDims(w, h);
+        binding?.captureProposalFromForm();
+      },
+      onResetProposal: () => ctrl?.resetToProposal(),
+    });
+    if (!ctrl) return;
+    binding = mountReframeBinding({
+      crop: ctrl,
+      bridge: store,
+      taskId: REFRAME_TASK,
+      onModelWritten: updateReframeKnobDisplay,
+    });
+    reframeBinding = binding;
+  }
+
+  function exitReframeCropMode(): void {
+    if (!reframeBinding) return;
+    reframeBinding.destroy();
+    reframeBinding = null;
+    previewer.exitCropMode();
+  }
+
+  function syncReframeCropMode(task: Task): void {
+    if (task.id === REFRAME_TASK) {
+      if (!reframeBinding) enterReframeCropMode();
+    } else {
+      exitReframeCropMode();
+    }
+  }
 
   // QoL: a project-wide control (the earliest task that carries it — project.init)
   // pre-fills the same value on the later steps' copies of that control, so the
@@ -186,6 +243,11 @@ async function boot(): Promise<void> {
         for (const k of s.downstreamKeys) store.setFormValue(k, val);
         if (s.key === "profile") previewer.setProfile(String(val ?? ""));
       }
+    }
+    // Knob edits flow the other way: form -> crop box (no-op outside crop mode).
+    if (reframeBinding && changedKey) {
+      if (isReframeModelKey(REFRAME_TASK, changedKey)) reframeBinding.syncModelFromForm();
+      else if (isReframeTargetKey(REFRAME_TASK, changedKey)) reframeBinding.syncTargetFromForm();
     }
     refreshCommand();
     updateRunEnabled();
@@ -254,6 +316,8 @@ async function boot(): Promise<void> {
       readOnly: isCompleted,
     });
     if (isCompleted) appendEditTask($("#form-host"), task);
+    // Reframe gets the source-aspect crop overlay; every other task gets layer preview.
+    syncReframeCropMode(task);
     refreshCommand();
   }
 

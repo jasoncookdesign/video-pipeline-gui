@@ -612,6 +612,60 @@ code, .mono { font-family: var(--mono); }
 /* centered watermark over the (black) stage before any layer is loaded */
 .previewer__empty { color: #9aa7b8; z-index: 1; }
 
+/* ---------- reframe crop mode (INI-091) ---------- */
+/* The overlay covers the stage; the source <video> shows through beneath it. */
+.previewer__overlay { position: absolute; inset: 0; z-index: 2; }
+.previewer__overlay[hidden] { display: none; }
+/* In crop mode the layer selector is irrelevant; the reset control takes its place. */
+.previewer__resetcrop {
+  background: var(--bg-sunken); border: 1px solid var(--border);
+  color: var(--text-dim); border-radius: 4px; padding: 3px 9px;
+  font-size: 11px; cursor: pointer;
+}
+.previewer__resetcrop:hover { border-color: var(--accent); color: var(--accent); }
+.previewer__resetcrop[hidden] { display: none; }
+
+/* The draggable crop box: hierarchy via the accent line + dimming, not boxes/fills. */
+.cropbox__frame { position: absolute; }
+.cropbox__frame[hidden] { display: none; }
+.cropbox__mask { position: absolute; background: rgba(8, 11, 16, 0.58); pointer-events: none; }
+.cropbox__rect {
+  position: absolute; box-sizing: border-box;
+  outline: 1.5px solid var(--accent);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  cursor: move;
+}
+.cropbox__rect:focus { outline: 2px solid var(--accent); }
+/* rule-of-thirds guides — faint, composition-only */
+.cropbox__thirds {
+  position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.28) 1px, transparent 1px),
+    linear-gradient(to right, rgba(255, 255, 255, 0.28) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.28) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.28) 1px, transparent 1px);
+  background-size: 1px 100%, 1px 100%, 100% 1px, 100% 1px;
+  background-position: 33.333% 0, 66.666% 0, 0 33.333%, 0 66.666%;
+  background-repeat: no-repeat;
+}
+.cropbox__handle {
+  position: absolute; width: 12px; height: 12px;
+  background: var(--accent); border: 1px solid #fff; border-radius: 2px;
+}
+.cropbox__handle--nw { left: -6px; top: -6px; cursor: nwse-resize; }
+.cropbox__handle--ne { right: -6px; top: -6px; cursor: nesw-resize; }
+.cropbox__handle--se { right: -6px; bottom: -6px; cursor: nwse-resize; }
+.cropbox__handle--sw { left: -6px; bottom: -6px; cursor: nesw-resize; }
+/* live crop-px vs output-px readout, docked bottom-left inside the source frame */
+.cropbox__readout {
+  position: absolute; left: 6px; bottom: 6px;
+  font-family: var(--mono); font-size: 10.5px; color: var(--text);
+  background: rgba(8, 11, 16, 0.72); border: 1px solid var(--border);
+  border-radius: 4px; padding: 2px 6px; pointer-events: none;
+  white-space: nowrap;
+}
+.cropbox__readout--warn { color: var(--warn); border-color: var(--warn); }
+
 /* ---------- help panel ---------- */
 .right__help { padding: 12px 14px; }
 .help__placeholder { color: var(--text-faint); font-style: italic; }

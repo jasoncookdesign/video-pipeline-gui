@@ -602,6 +602,28 @@ function buildControl(
   return { wrapper, refreshVisibility };
 }
 
+/**
+ * Imperatively update a control's DISPLAYED value without firing its change events —
+ * used when an external editor (the reframe crop box) writes a form value and the
+ * visible input must follow. A no-op if that control isn't currently mounted (the
+ * form may be showing a different task). Mirrors the id scheme in `buildControl`.
+ */
+export function setControlValue(
+  host: HTMLElement,
+  taskId: string,
+  paramKey: string,
+  value: unknown,
+): void {
+  const id = `ctl-${taskId}-${paramKey}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const el = host.querySelector<HTMLInputElement | HTMLSelectElement>(`#${CSS.escape(id)}`);
+  if (!el) return;
+  const str = value === null || value === undefined ? "" : String(value);
+  el.value = str;
+  // Sliders mirror their value in a sibling <output>.
+  const out = el.parentElement?.querySelector<HTMLElement>(".field__sliderval");
+  if (out) out.textContent = str;
+}
+
 export interface RenderedForm {
   el: HTMLElement;
   task: Task;

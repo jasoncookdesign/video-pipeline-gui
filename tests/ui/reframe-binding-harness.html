@@ -1,0 +1,65 @@
+<!doctype html>
+<!--
+  reframe-binding-harness.html — SANDBOX-ONLY isolation harness for the INI-091 Phase 4
+  previewer crop-mode + two-way form binding. Mounts the REAL previewer in crop mode
+  over an INJECTED synthetic source (no video file needed) and the REAL reframe binding
+  over the REAL store, then exposes hooks so the Playwright suite can drive drags +
+  knob edits and assert the knobs <-> box stay in lockstep. Served by vite in dev
+  (imports resolve /src/*.ts). Not shipped.
+-->
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Reframe Binding Harness</title>
+    <style>
+      body { margin: 0; }
+      #host { position: relative; width: 640px; height: 720px; }
+    </style>
+  </head>
+  <body>
+    <div id="host"></div>
+    <script type="module">
+      import "/src/styles.css";
+      import { mountPreviewer } from "/src/previewer.ts";
+      import { mountReframeBinding } from "/src/reframeBinding.ts";
+      import { store } from "/src/state.ts";
+
+      const host = document.getElementById("host");
+      // Seed the reframe.propose target knobs the binding reads (defaults would also
+      // work, but seeding makes the resolved-target assertion explicit).
+      store.setFormValue("reframe.propose.aspect", "full-portrait");
+      store.setFormValue("reframe.propose.resolution", "auto");
+      store.setFormValue("reframe.propose.allow_upscale", false);
+
+      const help = { show() {}, clear() {} };
+      // Minimal schema: crop mode never touches the layer list / ipc.
+      const previewer = mountPreviewer(host, { artifacts: [] }, help);
+
+      const written = [];
+      let binding = null;
+      // Enter crop mode with INJECTED dims (4K landscape source, the classic case).
+      const crop = previewer.enterCropMode({
+        srcW: 3840,
+        srcH: 2160,
+        onSourceDims: (w, h) => {
+          binding?.setSourceDims(w, h);
+          binding?.captureProposalFromForm();
+        },
+        onResetProposal: () => crop?.resetToProposal(),
+      });
+      binding = mountReframeBinding({
+        crop,
+        bridge: store,
+        taskId: "reframe.propose",
+        onModelWritten: (m) => written.push({ ...m }),
+      });
+
+      // Expose state for the test.
+      window.__crop = crop;
+      window.__binding = binding;
+      window.__store = store;
+      window.__written = written;
+      window.__knob = (k) => store.getFormValue(`reframe.propose.${k}`);
+    </script>
+  </body>
+</html>
