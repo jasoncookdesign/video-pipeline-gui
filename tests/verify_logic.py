@@ -293,7 +293,7 @@ def _topo_levels(enabled, edges, indeg):
 # --------------------------------------------------------------------------- #
 
 ALL = [
-    "project.init", "safezone.gen", "reframe", "roughcut",
+    "project.init", "safezone.gen", "reframe.propose", "reframe.render", "roughcut",
     "roughcut.render", "caption.define", "caption.render", "caption.preview",
     "safezone.qc", "composite",
     "export.premiere", "export.fcpx", "export.capcut",
@@ -311,13 +311,15 @@ def check_scheduler(schema):
     """The eight scenarios mirrored from scheduler.rs #[test]."""
     s = schema
 
-    # 1: project-init is the sole root; reframe + safezone.gen run parallel next.
+    # 1: project-init is the sole root; reframe.propose + safezone.gen run parallel
+    # next (the reframe step is two tasks now — propose then render; INI-091).
     plan = build_plan(s, set(ALL))
     assert plan.levels[0] == ["project.init"], plan.levels[0]
-    assert _level_of(plan, "reframe") == 1 and _level_of(plan, "safezone.gen") == 1
+    assert _level_of(plan, "reframe.propose") == 1 and _level_of(plan, "safezone.gen") == 1
+    assert _level_of(plan, "reframe.render") > _level_of(plan, "reframe.propose")
 
     # 2: full-graph ordering
-    assert _level_of(plan, "reframe") < _level_of(plan, "roughcut")
+    assert _level_of(plan, "reframe.render") < _level_of(plan, "roughcut")
     assert _level_of(plan, "roughcut.render") < _level_of(plan, "caption.define")
     assert _level_of(plan, "caption.define") < _level_of(plan, "caption.render")
     assert _level_of(plan, "caption.render") < _level_of(plan, "safezone.qc")
@@ -332,7 +334,7 @@ def check_scheduler(schema):
     # 4: skip chains collapse to project.init
     plan = build_plan(s, {"project.init", "safezone.gen", "roughcut", "caption.define"})
     assert dict(plan.bindings["caption.define"])["base"] == "project.init"
-    assert plan.skipped.get("reframe") == "Disabled"
+    assert plan.skipped.get("reframe.render") == "Disabled"
 
     # 5: missing producer is a plan-time error. With safezone.gen disabled,
     # caption.define is the FIRST enabled consumer of safezone.def in declaration
@@ -344,11 +346,12 @@ def check_scheduler(schema):
     except NoProducer as e:
         assert e.task == "caption.define" and e.channel == "safezone.def", (e.task, e.channel)
 
-    # 6: fail cascades only to reverse-reachable downstream
+    # 6: fail cascades only to reverse-reachable downstream. Fail the head of the
+    # reframe chain (propose); render + everything downstream is reverse-reachable.
     plan = build_plan(s, set(ALL))
-    blocked = plan.cascade_blocked({"reframe"})
-    for t in ["roughcut", "roughcut.render", "caption.define", "caption.render",
-              "caption.preview", "safezone.qc", "composite",
+    blocked = plan.cascade_blocked({"reframe.propose"})
+    for t in ["reframe.render", "roughcut", "roughcut.render", "caption.define",
+              "caption.render", "caption.preview", "safezone.qc", "composite",
               "export.premiere", "export.fcpx", "export.capcut"]:
         assert t in blocked, t
     assert "safezone.gen" not in blocked and "project.init" not in blocked

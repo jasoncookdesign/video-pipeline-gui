@@ -495,8 +495,9 @@ class MockIpc implements Ipc {
   }
 
   async upToDateTasks(_projectRoot: string): Promise<string[]> {
-    // Mock: pretend the upstream layers are already up-to-date.
-    return ["project.init", "reframe"];
+    // Mock: pretend the upstream layers are already up-to-date. The reframe step is
+    // two tasks now (INI-091): propose writes reframe.def, render writes the clip.
+    return ["project.init", "reframe.propose", "reframe.render"];
   }
 
   async writeProjectState(_projectRoot: string, _state: string): Promise<void> {

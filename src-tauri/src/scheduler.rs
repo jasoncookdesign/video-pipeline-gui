@@ -261,7 +261,8 @@ mod tests {
     const ALL: &[&str] = &[
         "project.init",
         "safezone.gen",
-        "reframe",
+        "reframe.propose",
+        "reframe.render",
         "roughcut",
         "roughcut.render",
         "caption.define",
@@ -280,16 +281,19 @@ mod tests {
     fn project_init_is_sole_root_then_parallel() {
         let plan = build_plan(&schema(), &enabled(ALL)).unwrap();
         // project.init is the only root (safezone.gen now depends on `project`);
-        // reframe + safezone.gen run in parallel at the next level.
+        // reframe.propose + safezone.gen run in parallel at the next level. The
+        // reframe step is two tasks now (INI-091): propose then render.
         assert_eq!(plan.levels[0], vec!["project.init".to_string()]);
-        assert_eq!(level_of(&plan, "reframe"), 1);
+        assert_eq!(level_of(&plan, "reframe.propose"), 1);
         assert_eq!(level_of(&plan, "safezone.gen"), 1);
+        // render consumes the propose def, so it lands strictly after propose.
+        assert!(level_of(&plan, "reframe.render") > level_of(&plan, "reframe.propose"));
     }
 
     #[test]
     fn full_graph_orders_render_before_define_and_qc_last() {
         let plan = build_plan(&schema(), &enabled(ALL)).unwrap();
-        assert!(level_of(&plan, "reframe") < level_of(&plan, "roughcut"));
+        assert!(level_of(&plan, "reframe.render") < level_of(&plan, "roughcut"));
         assert!(level_of(&plan, "roughcut.render") < level_of(&plan, "caption.define"));
         assert!(level_of(&plan, "caption.define") < level_of(&plan, "caption.render"));
         // qc consumes the caption layer -> strictly after caption.render
@@ -298,7 +302,8 @@ mod tests {
 
     #[test]
     fn skip_rewires_base_to_the_nearest_enabled_writer() {
-        // Disable reframe: roughcut must bind `base` to project.init, not reframe.
+        // Disable reframe.render (the reframe step's `base` writer): roughcut must
+        // bind `base` to project.init, not the reframe render.
         let on = enabled(&[
             "project.init", "roughcut", "roughcut.render", "safezone.gen",
         ]);
@@ -310,7 +315,8 @@ mod tests {
 
     #[test]
     fn skip_chains_collapse_to_project_init() {
-        // Disable reframe AND roughcut.render: caption.define binds base to project.init.
+        // Disable reframe.render AND roughcut.render: caption.define binds base to
+        // project.init (both reframe-step base writers are off).
         let on = enabled(&[
             "project.init", "safezone.gen", "roughcut", "caption.define",
         ]);
@@ -318,7 +324,7 @@ mod tests {
         let cd = &plan.bindings["caption.define"];
         let base = cd.iter().find(|b| b.channel == "base").unwrap();
         assert_eq!(base.producer, "project.init");
-        assert_eq!(plan.skipped.get("reframe"), Some(&SkipReason::Disabled));
+        assert_eq!(plan.skipped.get("reframe.render"), Some(&SkipReason::Disabled));
     }
 
     #[test]
@@ -342,10 +348,12 @@ mod tests {
     fn fail_cascades_only_to_reverse_reachable_downstream() {
         let plan = build_plan(&schema(), &enabled(ALL)).unwrap();
         let mut failed = BTreeSet::new();
-        failed.insert("reframe".to_string());
+        // Fail the head of the reframe chain (propose); render + everything
+        // downstream of the reframe step is reverse-reachable from it.
+        failed.insert("reframe.propose".to_string());
         let blocked = plan.cascade_blocked(&failed);
-        // everything downstream of reframe is blocked...
-        for t in ["roughcut", "roughcut.render", "caption.define", "caption.render", "safezone.qc"] {
+        // everything downstream of reframe.propose is blocked...
+        for t in ["reframe.render", "roughcut", "roughcut.render", "caption.define", "caption.render", "safezone.qc"] {
             assert!(blocked.contains(t), "{t} should be blocked");
         }
         // ...but the independent safezone.gen branch is untouched.
